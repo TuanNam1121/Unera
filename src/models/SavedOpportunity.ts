@@ -21,3 +21,4 @@ export const SavedOpportunity: Model<ISavedOpportunityDocument> =
   mongoose.model<ISavedOpportunityDocument>("SavedOpportunity", SavedOpportunitySchema);
 
 export default SavedOpportunity;
+

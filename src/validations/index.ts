@@ -86,3 +86,4 @@ export const updateBookingStatusSchema = z.object({
   status: z.enum(Object.keys(BOOKING_STATUS) as [string, ...string[]]),
   adminResponse: z.string().optional(),
 });
+

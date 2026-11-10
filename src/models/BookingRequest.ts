@@ -31,3 +31,4 @@ export const BookingRequest: Model<IBookingRequestDocument> =
   mongoose.model<IBookingRequestDocument>("BookingRequest", BookingRequestSchema);
 
 export default BookingRequest;
+

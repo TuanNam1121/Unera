@@ -41,3 +41,4 @@ export const StudentProfile: Model<IStudentProfileDocument> =
   mongoose.model<IStudentProfileDocument>("StudentProfile", StudentProfileSchema);
 
 export default StudentProfile;
+

@@ -33,3 +33,4 @@ export const User: Model<IUserDocument> =
   mongoose.models.User || mongoose.model<IUserDocument>("User", UserSchema);
 
 export default User;
+

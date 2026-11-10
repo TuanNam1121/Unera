@@ -25,3 +25,4 @@ export const MentorProfile: Model<IMentorProfileDocument> =
   mongoose.model<IMentorProfileDocument>("MentorProfile", MentorProfileSchema);
 
 export default MentorProfile;
+

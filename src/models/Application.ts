@@ -43,3 +43,4 @@ export const Application: Model<IApplicationDocument> =
   mongoose.model<IApplicationDocument>("Application", ApplicationSchema);
 
 export default Application;
+

@@ -24,3 +24,4 @@ export const CalendarEntry: Model<ICalendarEntryDocument> =
   mongoose.model<ICalendarEntryDocument>("CalendarEntry", CalendarEntrySchema);
 
 export default CalendarEntry;
+

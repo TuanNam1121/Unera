@@ -119,3 +119,4 @@ export const ACADEMIC_YEARS = [
   { value: "YEAR_4", label: "Năm tư" },
   { value: "YEAR_5_PLUS", label: "Năm 5 trở lên / Tốt nghiệp" },
 ] as const;
+
