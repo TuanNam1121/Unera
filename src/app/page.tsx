@@ -12,7 +12,7 @@ import {
 
 export default function HomePage() {
   return (
-    <div className="p-6 sm:p-8 space-y-7 max-w-7xl mx-auto">
+    <div className="w-full px-6 sm:px-8 py-6 space-y-7">
       {/* 1. TOP HEADER & STATUS */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

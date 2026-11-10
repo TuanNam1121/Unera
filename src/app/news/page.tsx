@@ -89,7 +89,7 @@ export default function NewsPage() {
   ];
 
   return (
-    <div className="p-6 sm:p-8 space-y-7 max-w-7xl mx-auto">
+    <div className="w-full px-6 sm:px-8 py-6 space-y-7">
       {/* 1. TOP HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
@@ -377,3 +377,4 @@ export default function NewsPage() {
     </div>
   );
 }
+

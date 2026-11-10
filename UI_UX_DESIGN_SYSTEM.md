@@ -63,7 +63,7 @@ background: linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 50%, #DCEBFE 100%);
 
 ## 3. Kiểu Chữ (Typography Scale)
 
-* **Font Family:** `Geist`, `Inter`, hoặc system sans-serif (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`).
+* **Font Family chính thức:** **`Inter`** (Google Fonts) hỗ trợ đầy đủ bộ ký tự Tiếng Việt (`subsets: ["latin", "vietnamese"]`, `display: "swap"`), fallback về system sans-serif (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`).
 * **Quy chuẩn hiển thị:**
   * **Logo Brand:** Cỡ 22px, `font-bold`, màu `#0F172A`, kèm dấu chấm xanh `#2563EB`. Subtitle phía dưới: `font-semibold`, 9px, `tracking-[0.15em]`, màu `#94A3B8`, in hoa toàn bộ: `ĐỊNH HƯỚNG TƯƠNG LAI`.
   * **Trang / Heading chính (Page Title / H1):** Cỡ 26px - 32px, `font-bold`, `leading-tight`, màu `#0F172A`.
@@ -76,7 +76,8 @@ background: linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 50%, #DCEBFE 100%);
 
 ## 4. Cấu Trúc Bố Cục Toàn Khung (Layout Architecture)
 
-Toàn bộ ứng dụng sử dụng bố cục **App Shell 2 Cột cố định**:
+Toàn bộ ứng dụng sử dụng bố cục **App Shell 2 Cột cố định dạng Fluid Edge-to-Edge**:
+> **Nguyên tắc bất biến:** Toàn bộ nội dung chính (Main Content) phải mở rộng toàn bộ chiều ngang (`w-full`), bắt đầu áp sát từ cạnh phải của Sidebar đến mép phải màn hình với lề chuẩn `px-6 sm:px-8 py-6`. Tuyệt đối không dùng `max-w-7xl mx-auto` gây co cụm ở giữa và để lại khoảng trống thụt lề lớn hai bên.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -174,3 +175,4 @@ Toàn bộ ứng dụng sử dụng bố cục **App Shell 2 Cột cố định*
 4. **Trang Chi tiết Cơ hội / Bài viết:**
    - Cột trái: Nội dung chi tiết.
    - Cột phải: Khối hành động cố định gồm nút "Thêm vào lịch" (màu xanh `#2563EB`), nút "Lưu cơ hội", và thông tin hạn chót.
+

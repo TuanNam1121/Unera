@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/common/Sidebar";
 import { Topbar } from "@/components/common/Topbar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "vietnamese"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,16 +24,16 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex bg-[#F6F8FB] text-slate-800 selection:bg-blue-600 selection:text-white">
+      <body className="min-h-full flex bg-[#F6F8FB] text-slate-800 font-sans selection:bg-blue-600 selection:text-white">
         {/* Left Persistent Navigation Sidebar */}
         <Sidebar />
 
-        {/* Right App Main Workspace */}
-        <div className="flex flex-1 flex-col min-w-0">
+        {/* Right App Main Workspace (Fluid Edge-to-Edge) */}
+        <div className="flex flex-1 flex-col min-w-0 w-full">
           <Topbar />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 w-full overflow-y-auto">{children}</main>
         </div>
       </body>
     </html>
