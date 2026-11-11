@@ -20,3 +20,4 @@ Hệ thống UNERA chuẩn hóa quy trình ứng tuyển thành 7 trạng thái 
 | 5 | `ACCEPTED` | **Trúng tuyển / Được nhận** | Nhận offer thư mời làm việc / thông báo trúng học bổng | Xanh lục (`emerald/green`) |
 | 6 | `REJECTED` | **Không trúng tuyển** | Không qua vòng hồ sơ hoặc phỏng vấn | Đỏ hồng (`rose/red`) |
 | 7 | `WITHDRAWN` | **Rút hồ sơ** | Sinh viên chủ động rút đơn vì lý do cá nhân | Xám (`slate/gray`) |
+

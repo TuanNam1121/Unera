@@ -15,3 +15,4 @@
    - Sinh viên được phép làm lại bài trắc nghiệm bất cứ khi nào nhận thấy mục tiêu hoặc sở thích của mình thay đổi.
    - **Bảo toàn lịch sử:** Lần làm mới sẽ tạo một bản ghi `QuizResult` độc lập mới, tuyệt đối không ghi đè hoặc xóa bỏ các kết quả cũ.
    - Kết quả mới nhất được đánh dấu là kết quả hiện hành (Current Active Result).
+

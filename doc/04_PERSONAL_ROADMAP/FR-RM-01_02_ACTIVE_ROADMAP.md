@@ -23,3 +23,4 @@
 
 - **AC-01:** Sinh viên truy cập trang `/roadmap`, hệ thống luôn hiển thị đúng duy nhất 1 lộ trình đang có hiệu lực.
 - **AC-02:** Kiểm tra CSDL MongoDB, không bao giờ xuất hiện 2 bản ghi cùng `studentId` mang `status: "ACTIVE"`.
+

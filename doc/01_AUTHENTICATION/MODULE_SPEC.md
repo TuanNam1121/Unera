@@ -68,3 +68,4 @@ interface IUser {
 | Đổi trạng thái tài khoản người khác | ❌ Bị chặn | ❌ Bị chặn | ✅ Cho phép |
 | Tự xóa tài khoản cá nhân | ❌ Bị chặn | ⛔ **Bị chặn tuyệt đối (FR-AUTH-11)** | ❌ Bị chặn |
 | Tạo tài khoản Admin mới | ❌ Bị chặn | ❌ Bị chặn | ✅ Cấp bởi Admin |
+

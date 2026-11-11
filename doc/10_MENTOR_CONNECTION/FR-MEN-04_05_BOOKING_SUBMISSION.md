@@ -26,3 +26,4 @@
    });
    ```
 4. **Trạng thái khởi tạo:** Bản ghi được tạo trong CSDL mang trạng thái mặc định `status: "PENDING"`.
+

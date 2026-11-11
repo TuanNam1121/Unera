@@ -20,3 +20,4 @@
 3. **Loại trừ AI trong MVP (AI Extension Exclusion - FR-ONB-12):**
    - SRS 1.0 xác định rõ ràng: **AI-based recommendation không thuộc phạm vi của phiên bản 1.0**.
    - Nhà phát triển không tự ý tích hợp OpenAI, Claude hay Gemini API vào luồng trắc nghiệm trừ khi có tài liệu PRD bổ sung được phê duyệt.
+

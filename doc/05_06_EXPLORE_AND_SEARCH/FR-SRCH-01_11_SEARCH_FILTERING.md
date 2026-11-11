@@ -22,3 +22,4 @@
    - Phân trang: Mặc định `12` cơ hội / trang. Trả về metadata: `page`, `limit`, `total`, `totalPages`.
 4. **Trạng thái kết quả rỗng (Empty Results - FR-SRCH-10):**
    - Khi không có bản ghi phù hợp, hiển thị giao diện thân thiện kèm gợi ý thử lại từ khóa hoặc xóa bộ lọc.
+

@@ -29,3 +29,4 @@
 2. **Tính năng hỗ trợ sinh viên:**
    - Cung cấp gợi ý trả lời theo khung **STAR** (Situation - Task - Action - Result).
    - Tính năng ghi chú câu trả lời nháp và đánh dấu các câu hỏi thường gặp để ôn tập trước ngày phỏng vấn.
+

@@ -23,3 +23,4 @@
   - Cơ hội tự động được hiển thị với nhãn cảnh báo *"Đã hết hạn nộp đơn"*.
   - Nút "Thêm vào lịch" bị vô hiệu hóa để ngăn chặn sinh viên tạo mới các bản ghi theo dõi không còn giá trị.
   - Hệ thống hỗ trợ tác vụ tự động (Cron job) hoặc Admin thủ công chuyển trạng thái các cơ hội hết hạn sang `CLOSED` để tránh gây nhầm lẫn trên trang Khám phá.
+

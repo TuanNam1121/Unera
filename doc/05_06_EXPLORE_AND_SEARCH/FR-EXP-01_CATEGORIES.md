@@ -24,3 +24,4 @@ Hệ thống bắt buộc hỗ trợ tối thiểu và chuẩn hóa 7 danh mục
    - Các cuộc thi giải case kinh doanh (Business Case), hackathon công nghệ, khởi nghiệp sinh viên, hùng biện.
 7. **Chương trình Đại sứ sinh viên (`ambassador_programs`):**
    - Chương trình tìm kiếm đại sứ thương hiệu, thủ lĩnh sinh viên, đại sứ thanh niên của các tổ chức quốc tế và tập đoàn.
+

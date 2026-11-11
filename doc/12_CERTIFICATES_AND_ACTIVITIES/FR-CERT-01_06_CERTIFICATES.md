@@ -200,3 +200,4 @@ Scenario: Tải tệp minh chứng chứng chỉ vượt quá dung lượng 10MB
   Then Hệ thống từ chối tải tệp và hiển thị thông báo lỗi "Kích thước tệp không được vượt quá 10MB" theo chuẩn FR-FILE-02
   And Không có dữ liệu rác nào được lưu vào hệ thống
 ```
+

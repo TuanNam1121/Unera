@@ -22,3 +22,4 @@
   - Lỗi gửi email **KHÔNG ĐƯỢC PHÉP làm thất bại hoặc xóa bỏ bản ghi thông báo In-app**.
   - Hệ thống vẫn lưu trữ bản ghi thông báo In-app và hiển thị bình thường cho sinh viên khi họ đăng nhập vào website.
   - Cập nhật trạng thái kênh email là `emailDeliveryStatus: "FAILED"` kèm lý do lỗi vào nhật ký để phục vụ kiểm tra vận hành.
+

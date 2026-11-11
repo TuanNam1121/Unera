@@ -95,3 +95,4 @@ export const registerSchema = z.object({
 - **Given:** Kẻ tấn công gửi request chứa trường `role: "ADMIN"`.
 - **When:** Endpoint xử lý dữ liệu.
 - **Then:** Hệ thống bỏ qua giá trị client gửi và luôn gán cứng `role: "STUDENT"`.
+

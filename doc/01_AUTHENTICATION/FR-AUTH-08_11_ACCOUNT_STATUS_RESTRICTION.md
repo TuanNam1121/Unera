@@ -28,3 +28,4 @@
 - **AC-01:** Trên toàn bộ trang Cài đặt / Hồ sơ sinh viên (`/profile/settings`), không xuất hiện mục "Xóa tài khoản" (Delete Account).
 - **AC-02:** Nếu sinh viên gọi trực tiếp API `DELETE /api/users/:id` nhắm vào chính mình, backend trả về HTTP `403 Forbidden`.
 - **AC-03:** Admin thay đổi trạng thái sinh viên sang `DISABLED`, tài khoản đó không thể thực hiện bất kỳ hành động nào trong hệ thống ở lần request tiếp theo.
+

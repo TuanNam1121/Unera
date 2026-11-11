@@ -40,3 +40,4 @@ Mỗi tài liệu đặc tả tính năng trong thư mục `doc/` được thi�
 4. **Mô hình dữ liệu & Cấu trúc Schema (Data Model Mapping):** Định nghĩa trường, kiểu dữ liệu, index, quan hệ giữa các collection MongoDB.
 5. **Đặc tả API Endpoint (API Contract):** Phương thức, đường dẫn, schema request validation (Zod), response chuẩn, mã lỗi HTTP.
 6. **Tiêu chí chấp thuận & Ca kiểm thử (Acceptance Criteria & Test Cases):** Định dạng Gherkin (Given - When - Then), kiểm thử luồng biên, kiểm thử quyền truy cập và kiểm thử tải/xung đột.
+

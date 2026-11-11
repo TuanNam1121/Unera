@@ -26,3 +26,4 @@
 3. **Thao tác chuyển trạng thái:**
    - Kéo-thả (Drag & Drop) mượt mà giữa các cột, hoặc bấm menu 3 chấm trên thẻ để chọn "Chuyển sang...".
    - Khi chuyển trạng thái, hệ thống tự động ghi nhật ký lịch sử kèm thời gian thay đổi.
+

@@ -23,3 +23,4 @@
 4. **Mẫu Email Tiêu Chuẩn:**
    - Tiêu đề email: `[UNERA Nhắc hẹn] Còn {X} ngày đến hạn nộp đơn: {Tên cơ hội}`
    - Nội dung: Tên cơ hội, ngày giờ hạn chót chính xác, tóm tắt điều kiện, link trực tiếp đến trang nộp đơn.
+

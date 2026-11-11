@@ -168,3 +168,4 @@ Scenario: Admin khóa tài khoản sinh viên vi phạm
   And Hệ thống ghi lại một bản ghi trong bảng AuditLog với đầy đủ adminId, action "LOCK_ACCOUNT", và lý do
   And Sinh viên "22041234" bị đăng xuất ngay lập tức và không thể truy cập tài nguyên bảo vệ
 ```
+

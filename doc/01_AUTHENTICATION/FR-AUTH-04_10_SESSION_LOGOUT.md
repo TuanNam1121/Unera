@@ -37,3 +37,4 @@
 - **Then:** Cookie phiên bị xóa sạch.
 - **And:** Người dùng không thể nhấn nút "Back" trên trình duyệt để thực hiện các thao tác riêng tư (API sẽ trả về HTTP 401 Unauthorized).
 - **And:** Chuyển hướng về `/login`.
+

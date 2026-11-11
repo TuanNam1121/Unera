@@ -14,3 +14,4 @@
 2. **Quản lý Thành tích & Giải thưởng (Achievements - FR-PRO-04):**
    - Lưu trữ danh mục học bổng, giải thưởng cuộc thi, danh hiệu sinh viên xuất sắc (ví dụ: *Học bổng Khuyến khích học tập 2025, Giải Nhì NCKH cấp Trường*).
    - Tích hợp trực tiếp sang hồ sơ cá nhân và module tạo CV.
+

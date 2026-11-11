@@ -11,6 +11,24 @@ import {
 // 1. User & Profile
 // ==============================================================================
 
+declare module "next-auth" {
+  interface User {
+    id?: string;
+    role?: UserRole;
+    status?: AccountStatus;
+  }
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      role?: UserRole;
+      status?: AccountStatus;
+    };
+  }
+}
+
 export interface IUser {
   _id: string;
   name: string;

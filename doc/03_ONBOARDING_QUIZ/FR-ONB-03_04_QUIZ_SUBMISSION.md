@@ -19,3 +19,4 @@
    - Toàn bộ câu hỏi bắt buộc phải được trả lời trước khi gửi kết quả.
    - Nếu sinh viên bấm nộp khi còn câu hỏi trống, hệ thống highlight câu hỏi chưa làm và cuộn mượt (smooth scroll) đến vị trí câu hỏi đó.
    - Khi nộp thành công, hệ thống lưu toàn bộ câu trả lời kèm timestamp nộp bài.
+

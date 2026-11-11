@@ -24,3 +24,4 @@
 
 - **AC-01:** Sinh viên mở xem 10 cơ hội khác nhau trên trang `/explore`. Kiểm tra lịch cá nhân `/calendar` hoàn toàn trống nếu sinh viên chưa từng bấm nút "Thêm vào lịch".
 - **AC-02:** Sinh viên bấm "Thêm vào lịch" cho 1 cơ hội có hạn chót 18/11. Cơ hội xuất hiện ngay lập tức trên Lịch cá nhân và khối "Hạn sắp tới" ở Trang chủ.
+

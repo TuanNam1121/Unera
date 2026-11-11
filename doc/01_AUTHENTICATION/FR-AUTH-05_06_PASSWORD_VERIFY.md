@@ -54,3 +54,4 @@ sequenceDiagram
 - **AC-01:** Token đặt lại mật khẩu hết hạn sau 30 phút. Nếu người dùng bấm link sau 31 phút, hệ thống báo lỗi *"Liên kết đã hết hạn, vui lòng yêu cầu lại"*.
 - **AC-02:** Token sau khi đã dùng để đổi mật khẩu thành công không thể tái sử dụng lần thứ hai.
 - **AC-03:** Mật khẩu mới bắt buộc phải thỏa mãn độ dài tối thiểu 6 ký tự.
+

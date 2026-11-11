@@ -19,3 +19,4 @@
     </Badge>
     ```
   - Nghiêm cấm hiển thị nội dung tài trợ ngầm hoặc trà trộn nội dung quảng cáo như một cơ hội thông thường mà không có nhãn nhận diện.
+

@@ -75,3 +75,4 @@ interface IOpportunity {
 | **FR-EXP-11 & 12** | Cơ hội không hạn chót & Xử lý hết hạn | [`FR-EXP-11_12_DEADLINES_EXPIRY.md`](./FR-EXP-11_12_DEADLINES_EXPIRY.md) |
 | **FR-EXP-14 & 15** | Kiểm soát cập nhật đồng thời (Optimistic Locking) | [`FR-EXP-14_15_OPTIMISTIC_LOCKING.md`](./FR-EXP-14_15_OPTIMISTIC_LOCKING.md) |
 | **FR-SRCH-01 đến 11** | Tìm kiếm từ khóa, Bộ lọc kết hợp & Phân trang | [`FR-SRCH-01_11_SEARCH_FILTERING.md`](./FR-SRCH-01_11_SEARCH_FILTERING.md) |
+

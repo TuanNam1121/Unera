@@ -51,3 +51,4 @@ interface ICalendarEntry {
 | **FR-CAL-04 đến 07** | Giao diện Lịch tháng, Danh sách & Khối hạn sắp tới | [`FR-CAL-04_07_CALENDAR_VIEWS.md`](./FR-CAL-04_07_CALENDAR_VIEWS.md) |
 | **FR-CAL-08 đến 10** | Hủy theo dõi, Dừng nhắc hẹn & Bảo tồn lịch sử thông báo | [`FR-CAL-08_10_REMOVE_AND_PRESERVE.md`](./FR-CAL-08_10_REMOVE_AND_PRESERVE.md) |
 | **FR-CAL-11 đến 14** | Chống trùng lặp, Cơ hội không hạn & Tách biệt danh sách lưu | [`FR-CAL-11_14_DUPLICATE_PREVENTION.md`](./FR-CAL-11_14_DUPLICATE_PREVENTION.md) |
+

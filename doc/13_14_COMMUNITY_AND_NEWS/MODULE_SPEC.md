@@ -58,3 +58,4 @@ stateDiagram-v2
   - Lộ trình 3 bước cho tân sinh viên (*01. Hiểu mình trước khi chọn ngành*, *02. Tìm hiểu ngành học và cơ hội*, *03. Lên kế hoạch cho bước tiếp theo*).
   - Bộ lọc danh mục dạng thanh pills pill-shaped (`rounded-full`).
   - Lưới bài viết 3 cột với thẻ card bo góc `rounded-2xl`, nút Lưu bài viết (Bookmark), nhãn thời gian đọc ước tính (*8 phút đọc*), nhãn tác giả (*Ban biên tập Polaris / Unera*).
+

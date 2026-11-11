@@ -22,3 +22,4 @@
 - **Trạng thái:** **TBD (Chưa quyết định theo SRS 1.0).**
 - **Quy tắc triển khai:** Lộ trình lịch sử (`status: "ARCHIVED"`) được đặt ở chế độ **CHỈ ĐỌC (Read-only)**.
 - Giao diện sinh viên chỉ hiển thị để xem lại, vô hiệu hóa các checkbox đánh dấu nhiệm vụ và không cung cấp nút chỉnh sửa nội dung trên lộ trình lịch sử cho đến khi có quyết định chính thức từ Product Owner.
+

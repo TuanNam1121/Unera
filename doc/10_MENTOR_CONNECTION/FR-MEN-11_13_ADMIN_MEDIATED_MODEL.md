@@ -20,3 +20,4 @@
 - **Quy tắc triển khai tạm thời trong MVP:**
   - Sinh viên được phép hủy yêu cầu (`status: "CANCELLED"`) khi yêu cầu vẫn đang ở trạng thái `PENDING`.
   - Một khi yêu cầu đã được Admin duyệt (`APPROVED`), sinh viên không thể tự ý bấm hủy trên website mà phải liên hệ trực tiếp với Admin hỗ trợ để tránh gây lãng phí thời gian của Mentor.
+

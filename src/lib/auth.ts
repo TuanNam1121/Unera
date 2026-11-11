@@ -4,15 +4,17 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { connectToDatabase } from "@/lib/db";
 import { User } from "@/models/User";
-import { USER_ROLES } from "@/constants";
+import { StudentProfile } from "@/models/StudentProfile";
+import { USER_ROLES, ACCOUNT_STATUS } from "@/constants";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 ngày
+    maxAge: 30 * 24 * 60 * 60, // 30 ngày (FR-AUTH-10)
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   providers: [
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -20,6 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),
@@ -44,7 +47,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Tài khoản không tồn tại trong hệ thống");
         }
 
-        if (user.status === "DISABLED") {
+        // FR-AUTH-08: Kiểm tra trạng thái tài khoản
+        if (user.status === ACCOUNT_STATUS.DISABLED) {
           throw new Error("Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ ban quản trị.");
         }
 
@@ -66,27 +70,83 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          status: user.status,
           image: user.avatar,
         };
       },
     }),
   ],
   callbacks: {
+    // FR-AUTH-03: Tự động khởi tạo tài khoản khi đăng nhập Google OAuth lần đầu
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        if (!user.email) return false;
+
+        await connectToDatabase();
+        const normalizedEmail = user.email.toLowerCase().trim();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let dbUser: any = await User.findOne({ email: normalizedEmail });
+
+        if (dbUser) {
+          if (dbUser.status === ACCOUNT_STATUS.DISABLED) {
+            return false; // Chặn tài khoản bị vô hiệu hóa
+          }
+          // Cập nhật avatar nếu có
+          if (!dbUser.avatar && user.image) {
+            dbUser.avatar = user.image;
+            await dbUser.save();
+          }
+        } else {
+          // Tạo tài khoản sinh viên mới (FR-AUTH-01 / FR-AUTH-03)
+          dbUser = await User.create({
+            name: user.name || normalizedEmail.split("@")[0] || "Sinh viên",
+            email: normalizedEmail,
+            role: USER_ROLES.STUDENT,
+            status: ACCOUNT_STATUS.ACTIVE,
+            avatar: user.image ?? undefined,
+            emailVerified: new Date(),
+          });
+
+          // Tạo StudentProfile tương ứng
+          await StudentProfile.create({
+            userId: dbUser._id.toString(),
+            fullName: dbUser.name,
+            skills: [],
+            achievements: [],
+            developmentGoals: {},
+          });
+        }
+
+        // Gán id và role vào object user để dùng trong jwt callback
+        user.id = dbUser._id.toString();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (user as any).role = dbUser.role;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (user as any).status = dbUser.status;
+      }
+      return true;
+    },
+
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as unknown as { role: string }).role || USER_ROLES.STUDENT;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.role = (user as any).role || USER_ROLES.STUDENT;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.status = (user as any).status || ACCOUNT_STATUS.ACTIVE;
       }
       return token;
     },
+
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session.user as any).role = token.role || USER_ROLES.STUDENT;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).status = token.status || ACCOUNT_STATUS.ACTIVE;
       }
       return session;
     },
   },
 });
-

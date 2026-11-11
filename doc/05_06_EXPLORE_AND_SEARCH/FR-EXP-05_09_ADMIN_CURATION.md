@@ -26,3 +26,4 @@
 
 - **AC-01:** Sinh viên truy cập bất kỳ trang chi tiết cơ hội nào đều nhìn thấy mục "Nguồn thông tin" kèm liên kết kiểm chứng bên ngoài.
 - **AC-02:** Sinh viên cố gắng gọi API tạo cơ hội bị hệ thống chặn bằng mã lỗi `403 Forbidden`.
+

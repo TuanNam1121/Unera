@@ -14,3 +14,4 @@
 - **Tính năng tương tác:**
   - Cho phép sinh viên xem trước (Preview), sao chép nhanh (Copy to clipboard) hoặc tải về dưới dạng tệp văn bản `.docx` hoặc `.pdf`.
   - Có các gợi ý điền chỗ trống dạng placeholder rõ ràng (ví dụ: `[Tên Công Ty]`, `[Kỹ Năng Cốt Lõi]`, `[Lý Do Bạn Chọn Ngành]`).
+

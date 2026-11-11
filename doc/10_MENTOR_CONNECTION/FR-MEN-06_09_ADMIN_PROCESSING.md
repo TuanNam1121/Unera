@@ -19,3 +19,4 @@
    - Ngay khi Admin nhấn lưu quyết định, hệ thống tự động:
      - Tạo thông báo In-app thông báo kết quả duyệt lịch.
      - Gửi email chi tiết chứa link phòng họp hoặc lý do từ chối đến email của sinh viên.
+

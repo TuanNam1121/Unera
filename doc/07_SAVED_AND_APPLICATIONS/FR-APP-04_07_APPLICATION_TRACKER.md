@@ -20,3 +20,4 @@
      { status: "APPLIED", updatedAt: new Date(), note: "Đã gửi email lúc 10h sáng" }
      ```
    - Cho phép sinh viên xem lại dòng thời gian tiến triển của từng bộ hồ sơ.
+

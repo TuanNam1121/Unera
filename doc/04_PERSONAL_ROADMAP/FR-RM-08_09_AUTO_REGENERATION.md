@@ -27,3 +27,4 @@
 
 - **AC-01:** Sinh viên đổi mục tiêu từ "Việc làm" sang "Du học". Lộ trình cũ được đưa vào lịch sử lưu trữ (`ARCHIVED`), lộ trình mới chứa các nhiệm vụ du học lập tức trở thành lộ trình chính (`ACTIVE`).
 - **AC-02:** Tiến độ và các nhiệm vụ sinh viên đã tích chọn ở lộ trình cũ vẫn được giữ nguyên vẹn trong bản ghi đã lưu trữ để sinh viên có thể xem lại lịch sử phấn đấu.
+

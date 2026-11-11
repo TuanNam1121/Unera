@@ -18,3 +18,4 @@ Hệ thống cung cấp 3 chế độ xem lịch:
    - Ngày có hạn chót hiển thị chấm tròn màu hoặc thanh nhãn tên cơ hội.
 3. **Chế độ Danh sách thời gian (List View - FR-CAL-06):**
    - Danh sách dòng thời gian sắp xếp theo thứ tự ngày tăng dần, phân nhóm theo Tuần này, Tuần tới, Tháng này.
+

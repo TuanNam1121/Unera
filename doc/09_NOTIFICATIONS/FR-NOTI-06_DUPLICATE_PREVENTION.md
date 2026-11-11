@@ -29,3 +29,4 @@
 
 - **AC-01:** Tiến trình nhắc hẹn mốc 7 ngày được kích hoạt liên tiếp 3 lần trong vòng 10 phút. Sinh viên chỉ nhận đúng 01 email và 01 thông báo in-app duy nhất.
 - **AC-02:** CSDL chặn mọi nỗ lực chèn bản ghi trùng lặp và ghi nhận log an toàn mà không làm sập tiến trình nền.
+

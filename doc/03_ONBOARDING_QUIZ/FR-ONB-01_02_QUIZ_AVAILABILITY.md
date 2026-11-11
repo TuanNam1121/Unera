@@ -25,3 +25,4 @@
 
 - **AC-01:** Sinh viên mới tạo tài khoản, bấm nút "Bỏ qua" tại màn hình `/onboarding`. Hệ thống điều hướng thành công vào `/explore`.
 - **AC-02:** Sinh viên đã bỏ qua trắc nghiệm vẫn có thể bấm "Thêm vào lịch" hoặc "Tạo CV" mà không bị chặn bởi bất kỳ modal bắt buộc nào.
+

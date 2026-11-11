@@ -2,16 +2,44 @@ import { z } from "zod";
 import { OPPORTUNITY_CATEGORIES, OPPORTUNITY_STATUS, APPLICATION_STATUS, BOOKING_STATUS } from "@/constants";
 
 // 1. Auth Validations
-export const registerSchema = z.object({
-  name: z.string().min(2, "Họ và tên phải có ít nhất 2 ký tự"),
-  email: z.string().email("Địa chỉ email không hợp lệ"),
-  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
-});
+export const registerSchema = z
+  .object({
+    name: z.string().min(2, "Họ và tên phải có ít nhất 2 ký tự").max(100, "Họ và tên tối đa 100 ký tự"),
+    email: z.string().email("Địa chỉ email không hợp lệ"),
+    password: z
+      .string()
+      .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
+      .max(128, "Mật khẩu không được vượt quá 128 ký tự"),
+    confirmPassword: z.string().optional(),
+  })
+  .refine((data) => !data.confirmPassword || data.password === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  });
 
 export const loginSchema = z.object({
   email: z.string().email("Địa chỉ email không hợp lệ"),
   password: z.string().min(1, "Vui lòng nhập mật khẩu"),
+  rememberMe: z.boolean().optional(),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Địa chỉ email không hợp lệ"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Token không hợp lệ hoặc đã bị thiếu"),
+    password: z
+      .string()
+      .min(6, "Mật khẩu mới phải có ít nhất 6 ký tự")
+      .max(128, "Mật khẩu không được vượt quá 128 ký tự"),
+    confirmPassword: z.string().min(1, "Vui lòng nhập xác nhận mật khẩu"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  });
 
 // 2. Profile Validations
 export const updateProfileSchema = z.object({

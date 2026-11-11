@@ -65,3 +65,4 @@ interface IApplicationRecord {
 | **FR-APP-04 & 07** | Quản lý Hồ sơ ứng tuyển, Ghi chú & Lịch sử tiến độ | [`FR-APP-04_07_APPLICATION_TRACKER.md`](./FR-APP-04_07_APPLICATION_TRACKER.md) |
 | **FR-APP-05** | 7 Trạng thái ứng tuyển chuẩn hóa | [`FR-APP-05_APPLICATION_STATUSES.md`](./FR-APP-05_APPLICATION_STATUSES.md) |
 | **FR-APP-08 đến 10** | Bảo vệ quyền sở hữu, Giới hạn xác thực ngoài & Tách biệt Lịch | [`FR-APP-08_10_RECORD_OWNERSHIP.md`](./FR-APP-08_10_RECORD_OWNERSHIP.md) |
+

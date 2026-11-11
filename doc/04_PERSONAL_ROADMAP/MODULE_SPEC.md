@@ -73,3 +73,4 @@ interface IRoadmap {
 | **FR-RM-08, 09, 14**| Tự động tái sinh khi đổi mục tiêu & Tính nhất quán | [`FR-RM-08_09_AUTO_REGENERATION.md`](./FR-RM-08_09_AUTO_REGENERATION.md) |
 | **FR-RM-10 & 11** | Lưu trữ lịch sử lộ trình & Ảnh chụp mục tiêu (Snapshot) | [`FR-RM-10_11_HISTORY_SNAPSHOT.md`](./FR-RM-10_11_HISTORY_SNAPSHOT.md) |
 | **FR-RM-13 & 16** | Bảo toàn lộ trình khi lỗi & Quy định sửa lịch sử | [`FR-RM-13_16_FAILURE_PRESERVATION.md`](./FR-RM-13_16_FAILURE_PRESERVATION.md) |
+

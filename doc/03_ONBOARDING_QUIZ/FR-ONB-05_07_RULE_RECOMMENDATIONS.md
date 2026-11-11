@@ -35,3 +35,4 @@ Hệ thống định nghĩa danh mục các hướng phát triển:
 
 - **AC-01:** Sinh viên nộp bài trắc nghiệm với điểm du học vượt trội nhận kết quả đề xuất hướng "Du học & Học bổng quốc tế" kèm lộ trình 3 bước chuẩn bị.
 - **AC-02:** Thuật toán chạy hoàn toàn nội bộ thông qua mã lệnh TypeScript / MongoDB, không phụ thuộc vào kết nối bên ngoài hoặc API AI nào.
+

@@ -82,3 +82,4 @@ sequenceDiagram
 
 - **AC-01:** Admin gửi request sửa cơ hội với `version` cũ hơn `version` hiện hành trong DB bị chặn lại với HTTP `409 Conflict`.
 - **AC-02:** Sau khi lưu thành công, trường `version` trong CSDL tự động tăng lên 1 đơn vị.
+

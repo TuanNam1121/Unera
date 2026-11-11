@@ -15,3 +15,4 @@
    - Cơ hội không có ngày hạn cụ thể (`deadline: null`) có thể xuất hiện trong danh mục "Cơ hội đang theo dõi", nhưng hệ thống không lên lịch nhắc hẹn 7/3/1 ngày.
 3. **Độc lập với Danh sách Lưu (Saved Independence - FR-CAL-14):**
    - Thêm vào lịch và Lưu cơ hội là 2 thực thể độc lập. Gỡ khỏi lịch không làm mất bookmark, và bỏ lưu bookmark không làm mất lịch theo dõi.
+

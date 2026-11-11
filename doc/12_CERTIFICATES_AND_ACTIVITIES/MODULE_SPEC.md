@@ -106,3 +106,4 @@ erDiagram
 1. **Không có hệ thống thi trực tuyến hay cấp chứng chỉ tại chỗ:** Nền tảng UNERA không tổ chức thi hay cấp chứng chỉ điện tử. UNERA đóng vai trò là thư viện thông tin định hướng và ví quản lý minh chứng cá nhân.
 2. **Không có cổng nộp đơn trực tiếp cho hoạt động ngoại khóa (No In-Platform Activity Application):** Đối với các chương trình NCKH, cuộc thi hoặc sự kiện CLB, hệ thống cung cấp thông tin chi tiết và nút dẫn ra liên kết đăng ký của BTC (Google Form, landing page đối tác).
 3. **Quyền riêng tư minh chứng:** Tệp chứng chỉ tải lên (chứa thông tin CCCD/Hộ chiếu, họ tên) thuộc quyền sở hữu riêng tư của sinh viên, chỉ sinh viên đó và Admin có thẩm quyền mới được truy cập theo chính sách bảo mật tệp (`FR-FILE-06`, `FR-FILE-10`).
+

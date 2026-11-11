@@ -161,3 +161,4 @@ Scenario: Kiểm tra bảo mật từ chối API đăng bài của sinh viên
   Then Backend trả về mã lỗi HTTP 404 hoặc 403 từ chối xử lý
   And Không có dữ liệu bài viết mới nào được tạo trong cơ sở dữ liệu
 ```
+

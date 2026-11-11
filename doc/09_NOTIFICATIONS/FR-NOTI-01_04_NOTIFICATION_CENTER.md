@@ -17,3 +17,4 @@
    - Cung cấp nút **"Đánh dấu tất cả là đã đọc"** trên giao diện trung tâm thông báo.
 3. **Lịch sử thông báo (Notification History - FR-NOTI-07):**
    - Lưu trữ toàn bộ các thông báo sinh viên đã nhận theo dòng thời gian để tra cứu lại khi cần.
+

@@ -30,3 +30,4 @@ Lộ trình được thiết kế dạng cây lồng nhau chuẩn hóa:
    - *Template Chuyên viên Công nghệ & Trải nghiệm số (Product / UI-UX)*
    - *Template Nghiên cứu sinh & Giảng dạy học thuật*
 3. Mỗi template quy định danh mục nhiệm vụ cốt lõi bắt buộc của từng năm học. Khi một lộ trình được sinh mới, nó phải tuân thủ nghiêm ngặt cấu trúc của template tương ứng (FR-RM-12).
+

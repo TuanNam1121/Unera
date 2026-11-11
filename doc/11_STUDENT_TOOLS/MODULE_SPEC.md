@@ -40,3 +40,4 @@ Cụm công cụ gồm 6 tiện ích cốt lõi hỗ trợ sinh viên:
 | **FR-TOOL-06** | Bảng Kanban theo dõi ứng tuyển trực quan | [`FR-TOOL-06_APPLICATION_KANBAN.md`](./FR-TOOL-06_APPLICATION_KANBAN.md) |
 | **FR-TOOL-07 & 08** | Máy tính GPA & Bảng quy đổi điểm IELTS/TOEIC | [`FR-TOOL-07_08_CALCULATORS.md`](./FR-TOOL-07_08_CALCULATORS.md) |
 | **FR-TOOL-09 & 10** | Dự toán chi phí du học & Ngân hàng câu hỏi phỏng vấn | [`FR-TOOL-09_10_ESTIMATOR_INTERVIEW.md`](./FR-TOOL-09_10_ESTIMATOR_INTERVIEW.md) |
+

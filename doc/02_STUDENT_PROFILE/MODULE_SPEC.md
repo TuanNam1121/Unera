@@ -63,3 +63,4 @@ interface IStudentProfile {
 | **FR-PRO-02** | Quản lý mục tiêu phát triển (Kích hoạt Lộ trình) | [`FR-PRO-02_DEVELOPMENT_GOALS.md`](./FR-PRO-02_DEVELOPMENT_GOALS.md) |
 | **FR-PRO-03 & 04** | Kỹ năng & Bảng thành tích sinh viên | [`FR-PRO-03_04_SKILLS_ACHIEVEMENTS.md`](./FR-PRO-03_04_SKILLS_ACHIEVEMENTS.md) |
 | **FR-PRO-05 & 06** | Tổng quan hồ sơ & Bảo vệ quyền sở hữu dữ liệu | [`FR-PRO-05_06_PROFILE_OWNERSHIP.md`](./FR-PRO-05_06_PROFILE_OWNERSHIP.md) |
+

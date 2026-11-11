@@ -27,3 +27,4 @@
 - **Lưu:** `POST /api/saved` `{ "opportunityId": "..." }` (HTTP 200/201)
 - **Bỏ lưu:** `DELETE /api/saved?opportunityId=...` (HTTP 200)
 - **Danh sách:** `GET /api/saved` (Trả về mảng cơ hội đã lưu kèm thông tin populate)
+

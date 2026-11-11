@@ -1,4 +1,4 @@
-# Đặc Tả Tính Năng: Đăng Nhập & Google OAuth 2.0
+ # Đặc Tả Tính Năng: Đăng Nhập & Google OAuth 2.0
 
 > **Mã tính năng:** `FR-AUTH-02`, `FR-AUTH-03`  
 > **Thuộc cụm:** `01_AUTHENTICATION`  
@@ -87,3 +87,4 @@ interface SessionUser {
 - **When:** Google xác thực thành công và trả về thông tin profile.
 - **Then:** Hệ thống tự động tạo User mới với vai trò `STUDENT` và tạo bản ghi `StudentProfile` tương ứng.
 - **And:** Đăng nhập thành công.
+

@@ -67,3 +67,4 @@ interface IQuizResult {
 | **FR-ONB-05 & 07** | Đánh giá Rule-based & Đề xuất hướng đi | Công thức chấm điểm, gợi ý 1-2 hướng | [`FR-ONB-05_07_RULE_RECOMMENDATIONS.md`](./FR-ONB-05_07_RULE_RECOMMENDATIONS.md) |
 | **FR-ONB-08 & 09** | Lịch sử kết quả & Làm lại bài | Giữ lịch sử lần làm trước, cho phép retake | [`FR-ONB-08_09_RESULT_HISTORY_RETAKE.md`](./FR-ONB-08_09_RESULT_HISTORY_RETAKE.md) |
 | **FR-ONB-10 & 12** | Quản lý câu hỏi & Loại trừ AI | Admin cấu hình câu hỏi/điểm, loại trừ AI | [`FR-ONB-10_12_ADMIN_QUIZ_MGMT.md`](./FR-ONB-10_12_ADMIN_QUIZ_MGMT.md) |
+

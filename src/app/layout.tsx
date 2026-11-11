@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/common/Sidebar";
 import { Topbar } from "@/components/common/Topbar";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,14 +28,16 @@ export default function RootLayout({
       className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex bg-[#F6F8FB] text-slate-800 font-sans selection:bg-blue-600 selection:text-white">
-        {/* Left Persistent Navigation Sidebar */}
-        <Sidebar />
+        <AuthProvider>
+          {/* Left Persistent Navigation Sidebar */}
+          <Sidebar />
 
-        {/* Right App Main Workspace (Fluid Edge-to-Edge) */}
-        <div className="flex flex-1 flex-col min-w-0 w-full">
-          <Topbar />
-          <main className="flex-1 w-full overflow-y-auto">{children}</main>
-        </div>
+          {/* Right App Main Workspace (Fluid Edge-to-Edge) */}
+          <div className="flex flex-1 flex-col min-w-0 w-full">
+            <Topbar />
+            <main className="flex-1 w-full overflow-y-auto">{children}</main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

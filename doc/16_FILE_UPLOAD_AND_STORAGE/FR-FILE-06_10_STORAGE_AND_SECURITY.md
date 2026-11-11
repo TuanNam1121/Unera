@@ -160,3 +160,4 @@ Scenario: Ngăn chặn sinh viên khác tải lén tệp riêng tư (Chống IDO
   And Hệ thống từ chối quyền truy cập với mã HTTP 403 Forbidden
   And Không có dữ liệu tệp nhị phân nào được gửi về cho Sinh viên B
 ```
+

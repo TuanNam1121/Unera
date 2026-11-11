@@ -162,3 +162,4 @@ Scenario: Bản ghi hoạt động được đồng bộ sang Trình tạo CV
   Then Hệ thống tự động gợi ý và hiển thị hoạt động "Chủ nhiệm CLB Sách ULIS" trong mục Kinh nghiệm / Hoạt động
   And Sinh viên có thể chọn đưa mục này vào bản xuất PDF CV
 ```
+

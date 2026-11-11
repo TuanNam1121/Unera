@@ -57,3 +57,4 @@
 
 - **AC-01:** Sinh viên tích chọn thêm mục tiêu "Du học" và bấm Lưu. Lộ trình của sinh viên tự động cập nhật thêm các cột mốc ôn thi IELTS, chuẩn bị bài luận và thư giới thiệu.
 - **AC-02:** Số lượng lộ trình mang `status: "ACTIVE"` của sinh viên trong cơ sở dữ liệu luôn chính xác bằng `1`.
+

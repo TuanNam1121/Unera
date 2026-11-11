@@ -26,3 +26,4 @@
 
 - **AC-01:** Sinh viên A (ID `user_A`) cố ý gửi request `PUT /api/profile` kèm ID của Sinh viên B (`user_B`). Backend tự động bỏ qua `user_B` và chỉ cập nhật dữ liệu của `user_A`.
 - **AC-02:** Sinh viên không thể xem trang chỉnh sửa hồ sơ của người khác.
+

@@ -27,3 +27,4 @@
 4. **Quản lý bản ghi CV (FR-TOOL-04 & OI-02):**
    - Sinh viên lưu trữ bản ghi CV trong tài khoản để chỉnh sửa lại sau.
    - Số lượng phiên bản CV được phép lưu trữ hiện tại là **TBD**; trong MVP hỗ trợ lưu tối thiểu 03 bản CV khác nhau.
+

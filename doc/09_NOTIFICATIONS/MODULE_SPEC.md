@@ -56,3 +56,4 @@ interface INotification {
 | **FR-NOTI-06** | Khóa ngăn trùng lặp thông báo (Deduplication) | [`FR-NOTI-06_DUPLICATE_PREVENTION.md`](./FR-NOTI-06_DUPLICATE_PREVENTION.md) |
 | **FR-NOTI-09 đến 11** | Lịch nhắc hạn chót 7, 3, 1 ngày qua In-app & Email | [`FR-NOTI-09_11_DEADLINE_REMINDERS.md`](./FR-NOTI-09_11_DEADLINE_REMINDERS.md) |
 | **FR-NOTI-12 đến 14** | Xử lý thêm muộn & Cô lập lỗi gửi Email | [`FR-NOTI-12_14_LATE_AND_FAILURE.md`](./FR-NOTI-12_14_LATE_AND_FAILURE.md) |
+

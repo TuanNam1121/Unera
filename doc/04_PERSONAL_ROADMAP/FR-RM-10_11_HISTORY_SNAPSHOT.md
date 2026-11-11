@@ -14,3 +14,4 @@
 2. **Ảnh chụp mục tiêu (Goal Snapshot - FR-RM-11):**
    - Mỗi bản ghi lộ trình (kể cả active và archived) đều mang theo trường `goalSnapshot` lưu giữ chính xác các lựa chọn mục tiêu mà sinh viên đã chọn tại thời điểm sinh lộ trình đó.
    - Giúp sinh viên và người hướng dẫn (nếu có) hiểu rõ bối cảnh và lý do tại sao lộ trình lịch sử lại được cấu trúc như vậy.
+

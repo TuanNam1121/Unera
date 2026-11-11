@@ -19,3 +19,4 @@
    - Lưu cơ hội không tự động đưa vào lịch.
    - Thêm vào lịch không tự động tạo thẻ ứng tuyển.
    - Các hành động này độc lập hoàn toàn với nhau về mặt dữ liệu và trải nghiệm người dùng.
+

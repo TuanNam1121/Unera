@@ -37,3 +37,4 @@ $$\text{ProgressPercent} = \begin{cases} 0 & \text{nếu } \text{TotalTasks} = 0
 
 - **AC-01:** Sinh viên bấm tick vào nhiệm vụ "Nộp cover letter". Tiến độ tăng từ 67% lên 75% ngay lập tức mà không cần tải lại toàn bộ trang.
 - **AC-02:** Sinh viên bấm bỏ tick, tiến độ tự động giảm tương ứng.
+

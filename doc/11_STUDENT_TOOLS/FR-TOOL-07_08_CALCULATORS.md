@@ -24,3 +24,4 @@
    - Đối chiếu sang Khung tham chiếu trình độ ngôn ngữ chung Châu Âu (CEFR: B1, B2, C1, C2).
 2. **Tuyên bố pháp lý bắt buộc (Disclaimer):**
    - Màn hình công cụ luôn hiển thị dòng lưu ý pháp lý: *"Bảng quy đổi mang tính chất tham khảo học thuật. Tiêu chuẩn xét tuyển thực tế phụ thuộc hoàn toàn vào quy định cụ thể của từng trường đại học, học bổng hoặc đơn vị tuyển dụng."*
+

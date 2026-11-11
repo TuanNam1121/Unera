@@ -27,3 +27,4 @@ Trang chi tiết cơ hội (`/explore/[id]`) cung cấp đầy đủ:
   - Nút **"Thêm vào lịch"** (Add to Calendar): Kích hoạt theo dõi hạn chót 7, 3, 1 ngày.
   - Nút **"Lưu cơ hội"** (Bookmark): Lưu vào danh sách quan tâm cá nhân.
   - Nút **"Chuyển trạng thái ứng tuyển"**: Tạo hoặc cập nhật thẻ theo dõi trên bảng Kanban cá nhân.
+

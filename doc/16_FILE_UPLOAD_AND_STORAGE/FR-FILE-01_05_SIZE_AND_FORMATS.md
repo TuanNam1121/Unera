@@ -134,3 +134,4 @@ Scenario: Phát hiện và chặn tệp giả mạo phần mở rộng (Renamed 
   And Máy chủ từ chối tiếp nhận với mã HTTP 415 Unsupported Media Type
   And Ghi nhận cảnh báo an ninh về hành vi tải tệp giả mạo
 ```
+

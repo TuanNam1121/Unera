@@ -25,3 +25,4 @@
 
 - **AC-01:** Sinh viên hủy theo dõi cơ hội A. Kiểm tra danh sách thông báo đã nhận, thông báo "Còn 7 ngày đến hạn cơ hội A" đã nhận hôm qua vẫn hiển thị bình thường.
 - **AC-02:** Đến mốc 3 ngày và 1 ngày, sinh viên không nhận thêm bất kỳ email hay thông báo in-app nào cho cơ hội A.
+

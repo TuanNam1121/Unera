@@ -56,3 +56,4 @@ export async function requireStudent() {
 - **AC-01:** Sinh viên đăng nhập gửi request `POST /api/opportunities` (tạo cơ hội mới) nhận phản hồi HTTP `403 Forbidden`.
 - **AC-02:** Sinh viên A cố ý gửi request sửa hồ sơ của Sinh viên B bằng cách đổi `studentId` trong payload bị hệ thống ghi đè bằng `userId` từ session hoặc từ chối HTTP `403`.
 - **AC-03:** Bất kỳ tài khoản Admin hợp lệ nào đều có thể duyệt yêu cầu mentor hoặc xuất bản cơ hội mà không bị chặn bởi cơ chế phân cấp.
+

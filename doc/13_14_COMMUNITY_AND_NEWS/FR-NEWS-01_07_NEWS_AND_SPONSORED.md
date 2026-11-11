@@ -181,3 +181,4 @@ Scenario: Admin xuất bản tin tức nổi bật trên Dashboard
   Then Bài viết được cập nhật trạng thái "PUBLISHED"
   And Banner trang chủ Dashboard của toàn bộ sinh viên hiển thị bài viết nổi bật này
 ```
+

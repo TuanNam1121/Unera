@@ -140,3 +140,4 @@ Scenario: Tự động ghi nhật ký khi Admin thay đổi trạng thái Cơ h�
   And Một bản ghi AuditLog mới được tạo ngay lập tức chứa adminEmail, action "STATUS_CHANGE", changesBefore và changesAfter
   And Quản trị viên khác truy cập trang Nhật ký kiểm toán có thể nhìn thấy dòng sự kiện này ngay lập tức
 ```
+

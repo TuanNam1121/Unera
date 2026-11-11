@@ -174,3 +174,4 @@ Scenario: Admin nạp lại dữ liệu mới nhất sau khi nhận cảnh báo 
   And Số phiên bản hiện tại trên form được nâng lên thành 2
   And Admin A có thể tiếp tục thực hiện chỉnh sửa bổ sung trên bản ghi này
 ```
+
