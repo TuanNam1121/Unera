@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Bookmark,
@@ -8,12 +8,113 @@ import {
   ChevronRight,
   Search,
   ChevronDown,
+  Sparkles,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface NewsItem {
+  _id?: string;
+  id?: string;
+  slug?: string;
+  title: string;
+  summary?: string;
+  description?: string;
+  category: string;
+  categoryColor?: string;
+  author: string;
+  readTime: string;
+  isFeatured?: boolean;
+  isSponsored?: boolean;
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  DU_HOC: "bg-blue-50 text-blue-700 border-blue-100",
+  STUDY_ABROAD: "bg-blue-50 text-blue-700 border-blue-100",
+  KHOI_NGANH: "bg-purple-50 text-purple-700 border-purple-100",
+  DISCIPLINES: "bg-purple-50 text-purple-700 border-purple-100",
+  KY_NANG_CV: "bg-sky-50 text-sky-700 border-sky-100",
+  SKILLS_CV: "bg-sky-50 text-sky-700 border-sky-100",
+  SAU_DAI_HOC: "bg-indigo-50 text-indigo-700 border-indigo-100",
+  POSTGRAD: "bg-indigo-50 text-indigo-700 border-indigo-100",
+  HOC_BONG: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  SCHOLARSHIPS: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  HOAT_DONG_SINH_VIEN: "bg-cyan-50 text-cyan-700 border-cyan-100",
+  ACTIVITIES: "bg-cyan-50 text-cyan-700 border-cyan-100",
+  ORIENTATION: "bg-blue-50 text-blue-700 border-blue-100",
+};
+
+const DEFAULT_ARTICLES: NewsItem[] = [
+  {
+    id: "1",
+    slug: "du-hoc-khong-bat-dau-tu-mot-bo-ho-so",
+    category: "DU HỌC",
+    title: "Du học không bắt đầu từ một bộ hồ sơ",
+    description:
+      "Cách xác định mục tiêu, chọn điểm đến và chuẩn bị nguồn lực trước khi nộp đơn.",
+    author: "Ban biên tập Polaris",
+    readTime: "8 phút đọc",
+  },
+  {
+    id: "2",
+    slug: "kinh-te-quan-tri-ban-se-hoc-va-lam-gi",
+    category: "KHỐI NGÀNH",
+    title: "Kinh tế – Quản trị: Bạn sẽ học và làm gì?",
+    description:
+      "Hiểu về chương trình học, nhóm kỹ năng và các hướng nghề nghiệp sau tốt nghiệp.",
+    author: "Ban biên tập Polaris",
+    readTime: "6 phút đọc",
+  },
+  {
+    id: "3",
+    slug: "cv-dau-tien-it-kinh-nghiem-van-co-diem-manh",
+    category: "KỸ NĂNG & CV",
+    title: "CV đầu tiên: ít kinh nghiệm, vẫn có điểm mạnh",
+    description:
+      "Biến dự án môn học và hoạt động sinh viên thành câu chuyện năng lực của bạn.",
+    author: "Ban biên tập Polaris",
+    readTime: "5 phút đọc",
+  },
+  {
+    id: "4",
+    slug: "hoc-thac-si-ngay-hay-di-lam-truoc",
+    category: "SAU ĐẠI HỌC",
+    title: "Học thạc sĩ ngay hay đi làm trước?",
+    description:
+      "Những câu hỏi cần tự trả lời để lựa chọn thời điểm học tiếp phù hợp với mình.",
+    author: "Ban biên tập Polaris",
+    readTime: "7 phút đọc",
+  },
+  {
+    id: "5",
+    slug: "tim-hoc-bong-phu-hop-khong-chi-hoc-bong-lon",
+    category: "HỌC BỔNG",
+    title: "Tìm học bổng phù hợp, không chỉ học bổng lớn",
+    description:
+      "Một cách tiếp cận có hệ thống để tìm kiếm, sàng lọc và theo dõi cơ hội học bổng.",
+    author: "Ban biên tập Polaris",
+    readTime: "6 phút đọc",
+  },
+  {
+    id: "6",
+    slug: "bat-dau-nghien-cuu-khoa-hoc-tu-nam-dai-hoc",
+    category: "HOẠT ĐỘNG SINH VIÊN",
+    title: "Bắt đầu nghiên cứu khoa học từ năm đại học",
+    description:
+      "Từ một câu hỏi nhỏ đến đề tài đầu tiên: cách tìm chủ đề, nhóm và người hướng dẫn.",
+    author: "Ban biên tập Polaris",
+    readTime: "9 phút đọc",
+  },
+];
 
 export default function NewsPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [articles, setArticles] = useState<NewsItem[]>(DEFAULT_ARTICLES);
+  const [featured, setFeatured] = useState<NewsItem | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [savedArticles, setSavedArticles] = useState<Record<string, boolean>>({});
 
   const tabs = [
     { id: "all", label: "Tất cả" },
@@ -25,68 +126,50 @@ export default function NewsPage() {
     { id: "scholarships", label: "Học bổng" },
   ];
 
-  const articles = [
-    {
-      id: "1",
-      category: "DU HỌC",
-      categoryColor: "bg-blue-50 text-blue-700 border-blue-100",
-      title: "Du học không bắt đầu từ một bộ hồ sơ",
-      description:
-        "Cách xác định mục tiêu, chọn điểm đến và chuẩn bị nguồn lực trước khi nộp đơn.",
-      author: "Ban biên tập Polaris",
-      readTime: "8 phút đọc",
-    },
-    {
-      id: "2",
-      category: "KHỐI NGÀNH",
-      categoryColor: "bg-purple-50 text-purple-700 border-purple-100",
-      title: "Kinh tế – Quản trị: Bạn sẽ học và làm gì?",
-      description:
-        "Hiểu về chương trình học, nhóm kỹ năng và các hướng nghề nghiệp sau tốt nghiệp.",
-      author: "Ban biên tập Polaris",
-      readTime: "6 phút đọc",
-    },
-    {
-      id: "3",
-      category: "KỸ NĂNG & CV",
-      categoryColor: "bg-sky-50 text-sky-700 border-sky-100",
-      title: "CV đầu tiên: ít kinh nghiệm, vẫn có điểm mạnh",
-      description:
-        "Biến dự án môn học và hoạt động sinh viên thành câu chuyện năng lực của bạn.",
-      author: "Ban biên tập Polaris",
-      readTime: "5 phút đọc",
-    },
-    {
-      id: "4",
-      category: "SAU ĐẠI HỌC",
-      categoryColor: "bg-indigo-50 text-indigo-700 border-indigo-100",
-      title: "Học thạc sĩ ngay hay đi làm trước?",
-      description:
-        "Những câu hỏi cần tự trả lời để lựa chọn thời điểm học tiếp phù hợp với mình.",
-      author: "Ban biên tập Polaris",
-      readTime: "7 phút đọc",
-    },
-    {
-      id: "5",
-      category: "HỌC BỔNG",
-      categoryColor: "bg-emerald-50 text-emerald-700 border-emerald-100",
-      title: "Tìm học bổng phù hợp, không chỉ học bổng lớn",
-      description:
-        "Một cách tiếp cận có hệ thống để tìm kiếm, sàng lọc và theo dõi cơ hội học bổng.",
-      author: "Ban biên tập Polaris",
-      readTime: "6 phút đọc",
-    },
-    {
-      id: "6",
-      category: "HOẠT ĐỘNG SINH VIÊN",
-      categoryColor: "bg-cyan-50 text-cyan-700 border-cyan-100",
-      title: "Bắt đầu nghiên cứu khoa học từ năm đại học",
-      description:
-        "Từ một câu hỏi nhỏ đến đề tài đầu tiên: cách tìm chủ đề, nhóm và người hướng dẫn.",
-      author: "Ban biên tập Polaris",
-      readTime: "9 phút đọc",
-    },
-  ];
+  useEffect(() => {
+    async function fetchNews() {
+      try {
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: "6",
+          ...(activeTab !== "all" && { category: activeTab }),
+          ...(searchQuery && { search: searchQuery }),
+        });
+        const res = await fetch(`/api/news?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.articles && data.articles.length > 0) {
+            setArticles(data.articles);
+            setTotalPages(data.totalPages || 1);
+          }
+          if (data.featuredArticle) {
+            setFeatured(data.featuredArticle);
+          }
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+    fetchNews();
+  }, [activeTab, searchQuery, page]);
+
+  const toggleSaveArticle = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSavedArticles((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const featuredTitle =
+    featured?.title ||
+    "Chưa biết mình phù hợp với ngành nào? Bắt đầu từ đây.";
+  const featuredSummary =
+    featured?.summary ||
+    "Một hướng dẫn để hiểu bản thân, tìm hiểu ngành học và biến những băn khoăn thành kế hoạch cụ thể.";
+  const featuredSlug =
+    featured?.slug || "chua-biet-minh-phu-hop-voi-nganh-nao-bat-dau-tu-day";
 
   return (
     <div className="w-full px-6 sm:px-8 py-6 space-y-7">
@@ -107,6 +190,7 @@ export default function NewsPage() {
         {/* Saved Articles Button */}
         <button
           type="button"
+          onClick={() => alert(`Bạn đang lưu ${Object.values(savedArticles).filter(Boolean).length} bài viết.`)}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors self-start sm:self-auto"
         >
           <Bookmark className="h-4 w-4 text-slate-500" />
@@ -125,25 +209,30 @@ export default function NewsPage() {
               </span>
               <button
                 type="button"
+                onClick={(e) => toggleSaveArticle("featured", e)}
                 className="text-slate-400 hover:text-blue-600 p-1"
                 title="Lưu bài viết"
               >
-                <Bookmark className="h-4 w-4" />
+                <Bookmark
+                  className={cn(
+                    "h-4 w-4",
+                    savedArticles["featured"] && "fill-blue-600 text-blue-600"
+                  )}
+                />
               </button>
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight">
-              Chưa biết mình phù hợp với ngành nào? <br className="hidden sm:inline" />
-              Bắt đầu từ đây.
+              {featuredTitle}
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed">
-              Một hướng dẫn để hiểu bản thân, tìm hiểu ngành học và biến những băn khoăn thành kế hoạch cụ thể.
+              {featuredSummary}
             </p>
           </div>
 
           <div className="mt-6 pt-4 flex flex-wrap items-center gap-4">
-            <Link href="/news/article-1">
+            <Link href={`/news/${featuredSlug}`}>
               <button
                 type="button"
                 className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-blue-500/25 hover:bg-blue-700 transition-colors"
@@ -172,7 +261,7 @@ export default function NewsPage() {
           <div className="mt-4 space-y-3 divide-y divide-slate-100">
             {/* Step 01 */}
             <Link
-              href="/news/step-1"
+              href="/onboarding"
               className="group flex items-center justify-between pt-3 first:pt-0"
             >
               <div className="flex items-start gap-3">
@@ -193,7 +282,7 @@ export default function NewsPage() {
 
             {/* Step 02 */}
             <Link
-              href="/news/step-2"
+              href="/explore"
               className="group flex items-center justify-between pt-3"
             >
               <div className="flex items-start gap-3">
@@ -214,7 +303,7 @@ export default function NewsPage() {
 
             {/* Step 03 */}
             <Link
-              href="/news/step-3"
+              href="/roadmap"
               className="group flex items-center justify-between pt-3"
             >
               <div className="flex items-start gap-3">
@@ -246,7 +335,10 @@ export default function NewsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setPage(1);
+                }}
                 className={cn(
                   "rounded-full px-3.5 py-1.5 text-xs font-medium transition-all whitespace-nowrap",
                   isSelected
@@ -267,7 +359,10 @@ export default function NewsPage() {
             type="text"
             placeholder="Tìm trong thư viện bài viết..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
             className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-4 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
           />
         </div>
@@ -295,51 +390,76 @@ export default function NewsPage() {
           </div>
         </div>
 
-        {/* 6 Article Cards Grid */}
+        {/* Article Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {articles.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between group"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "rounded-md border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase",
-                      item.categoryColor
-                    )}
-                  >
-                    {item.category}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-blue-600 p-1"
-                    title="Lưu bài viết"
-                  >
-                    <Bookmark className="h-4 w-4" />
-                  </button>
+          {articles.map((item) => {
+            const itemKey = item._id || item.id || item.slug || item.title;
+            const itemSlug = item.slug || item.id;
+            const categoryBadgeColor =
+              item.categoryColor ||
+              CATEGORY_COLORS[item.category] ||
+              "bg-blue-50 text-blue-700 border-blue-100";
+
+            return (
+              <Link
+                key={itemKey}
+                href={`/news/${itemSlug}`}
+                className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "rounded-md border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase",
+                          categoryBadgeColor
+                        )}
+                      >
+                        {item.category}
+                      </span>
+
+                      {item.isSponsored && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
+                          <Award className="h-2.5 w-2.5" /> Tài trợ
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => toggleSaveArticle(itemKey, e)}
+                      className="text-slate-400 hover:text-blue-600 p-1"
+                      title="Lưu bài viết"
+                    >
+                      <Bookmark
+                        className={cn(
+                          "h-4 w-4",
+                          savedArticles[itemKey] && "fill-blue-600 text-blue-600"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                      {item.title}
+                    </h4>
+                    <p className="mt-1.5 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                      {item.summary || item.description}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
-                    {item.title}
-                  </h4>
-                  <p className="mt-1.5 text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                    {item.description}
-                  </p>
+                <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>{item.author}</span>
+                  <div className="flex items-center gap-2">
+                    <span>{item.readTime}</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                  </div>
                 </div>
-              </div>
-
-              <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                <span>{item.author}</span>
-                <div className="flex items-center gap-2">
-                  <span>{item.readTime}</span>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </div>
-            </div>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -353,7 +473,9 @@ export default function NewsPage() {
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 shadow-2xs"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 shadow-2xs disabled:opacity-40"
             aria-label="Previous page"
           >
             &lt;
@@ -362,12 +484,14 @@ export default function NewsPage() {
             type="button"
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-semibold text-white shadow-2xs"
           >
-            1
+            {page}
           </button>
-          <span className="px-2 text-xs text-slate-500">Trang 1</span>
+          <span className="px-2 text-xs text-slate-500">Trang {page} / {totalPages}</span>
           <button
             type="button"
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 h-8 text-xs font-medium text-slate-600 hover:bg-slate-50 shadow-2xs"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 h-8 text-xs font-medium text-slate-600 hover:bg-slate-50 shadow-2xs disabled:opacity-40"
           >
             <span>Tiếp theo</span>
             <span>&gt;</span>
@@ -377,4 +501,3 @@ export default function NewsPage() {
     </div>
   );
 }
-

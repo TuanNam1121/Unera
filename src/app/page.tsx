@@ -9,6 +9,7 @@ import {
   Code,
   Sparkles,
 } from "lucide-react";
+import HomeRoadmapCard from "@/components/home/HomeRoadmapCard";
 
 export default function HomePage() {
   return (
@@ -119,54 +120,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs space-y-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="inline-block rounded-md bg-purple-50 border border-purple-100 px-2.5 py-0.5 text-[11px] font-semibold text-purple-700">
-                  Du học
-                </span>
-                <h4 className="mt-2 text-xl font-bold text-slate-900">
-                  Trở thành Du học sinh Mỹ
-                </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Giai đoạn 2 / 3 · Xây dựng nền tảng
-                </p>
-              </div>
-
-              {/* Progress Stat */}
-              <div className="text-right">
-                <span className="text-2xl font-black text-blue-600">67%</span>
-                <p className="text-[11px] text-slate-400 mt-0.5">8 / 12 bước hoàn tất</p>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="space-y-1.5">
-              <div className="h-2 w-full rounded-full bg-blue-100/60 overflow-hidden">
-                <div className="h-full rounded-full bg-blue-600 w-[67%]" />
-              </div>
-            </div>
-
-            {/* Checklist items */}
-            <div className="border-t border-slate-100 pt-4 space-y-3">
-              <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 fill-blue-50 shrink-0" />
-                <span className="font-medium line-through text-slate-400">Đạt GPA 4.5 Năm 4</span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-700">
-                <div className="flex items-center gap-2.5">
-                  <Circle className="h-4 w-4 text-slate-300 shrink-0" />
-                  <span className="font-medium text-slate-800">Nộp cover letter</span>
-                </div>
-                <Link
-                  href="/roadmap"
-                  className="text-[11px] font-semibold text-blue-600 hover:underline"
-                >
-                  Bước tiếp theo
-                </Link>
-              </div>
-            </div>
-          </div>
+          <HomeRoadmapCard />
         </div>
 
         {/* Right Column (1/3 width): Hạn sắp tới */}
