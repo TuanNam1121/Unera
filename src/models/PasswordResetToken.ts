@@ -25,3 +25,4 @@ export const PasswordResetToken: Model<IPasswordResetToken> =
   mongoose.model<IPasswordResetToken>("PasswordResetToken", PasswordResetTokenSchema);
 
 export default PasswordResetToken;
+

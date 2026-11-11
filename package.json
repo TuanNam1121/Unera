@@ -4,10 +4,11 @@
   "description": "UNERA - Định hướng học tập & phát triển sự nghiệp toàn diện cho sinh viên đại học",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 8000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "create-admins": "node scripts/create_admins.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

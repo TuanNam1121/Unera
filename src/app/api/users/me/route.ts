@@ -17,3 +17,4 @@ export async function DELETE() {
 export async function GET() {
   return NextResponse.redirect(new URL("/api/auth/me", process.env.NEXTAUTH_URL || "http://localhost:3000"));
 }
+

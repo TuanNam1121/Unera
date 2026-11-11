@@ -92,3 +92,4 @@ export function handleAuthError(error: unknown) {
   const message = error instanceof Error ? error.message : "Lỗi xác thực hệ thống";
   return NextResponse.json({ error: message }, { status: 500 });
 }
+
