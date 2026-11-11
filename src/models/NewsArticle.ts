@@ -84,3 +84,4 @@ export const NewsArticle: Model<INewsArticleDocument> =
   mongoose.model<INewsArticleDocument>("NewsArticle", NewsArticleSchema);
 
 export default NewsArticle;
+

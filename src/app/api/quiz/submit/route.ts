@@ -219,9 +219,12 @@ export async function POST(req: Request) {
       success: true,
       message: "Hoàn thành bài trắc nghiệm định hướng thành công!",
       result: newResult,
+      scores,
+      recommendedDirections,
       roadmapId: newRoadmap._id.toString(),
     });
   } catch (error) {
     return handleAuthError(error);
   }
 }
+

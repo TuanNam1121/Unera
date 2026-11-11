@@ -176,9 +176,15 @@ export default function OnboardingQuizPage() {
 
   // --- RESULT VIEW ---
   if (result) {
-    const primary = result.recommendedDirections[0];
-    const secondary = result.recommendedDirections[1];
+    const recommended =
+      result.recommendedDirections ||
+      result.result?.recommendedDirections ||
+      [];
+    const primary = recommended[0];
+    const secondary = recommended[1];
     const PrimaryIcon = primary ? DIRECTION_ICONS[primary.direction] || Compass : Compass;
+    const breakdownScores =
+      result.scores || (result.result as { scores?: Record<string, number> })?.scores || {};
 
     return (
       <div className="min-h-screen bg-slate-50/70 py-10 px-4 sm:px-6 lg:px-8">
@@ -260,13 +266,13 @@ export default function OnboardingQuizPage() {
           )}
 
           {/* Breakdown Scores */}
-          {result.scores && (
+          {breakdownScores && Object.keys(breakdownScores).length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
               <h3 className="text-sm font-bold text-slate-900">
                 Tổng điểm các lĩnh vực định hướng
               </h3>
               <div className="space-y-3">
-                {Object.entries(result.scores).map(([dirKey, score]) => {
+                {Object.entries(breakdownScores).map(([dirKey, score]) => {
                   const labels: Record<string, string> = {
                     study_abroad: "Du học & Học bổng Quốc tế",
                     employment: "Quản trị viên Tập sự & MNC",
@@ -274,7 +280,7 @@ export default function OnboardingQuizPage() {
                     startup: "Khởi nghiệp & Sáng tạo",
                     skills: "Kỹ năng & Hoạt động Ngoại khóa",
                   };
-                  const maxScore = Math.max(...Object.values(result.scores), 1);
+                  const maxScore = Math.max(...Object.values(breakdownScores), 1);
                   const barWidth = Math.round((score / maxScore) * 100);
 
                   return (
@@ -493,3 +499,4 @@ export default function OnboardingQuizPage() {
     </div>
   );
 }
+

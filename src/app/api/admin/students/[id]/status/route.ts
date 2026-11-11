@@ -74,3 +74,4 @@ export async function PATCH(
     return handleAuthError(error);
   }
 }
+
