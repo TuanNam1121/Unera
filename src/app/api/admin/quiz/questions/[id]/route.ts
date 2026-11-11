@@ -203,3 +203,4 @@ export async function DELETE(
     return handleAuthError(error);
   }
 }
+
