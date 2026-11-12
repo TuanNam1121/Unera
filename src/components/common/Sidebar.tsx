@@ -63,6 +63,7 @@ export function Sidebar() {
       if (pathname.startsWith("/admin/media")) return "adminMedia";
       if (pathname.startsWith("/admin/mentors") || pathname.startsWith("/admin/bookings")) return "adminMentors";
       if (pathname.startsWith("/admin/quiz") || pathname.startsWith("/admin/ai-prompts")) return "adminQuiz";
+      if (pathname.startsWith("/admin/audit-logs") || pathname.startsWith("/admin/user-logs")) return "adminLogs";
       return null;
     }
     if (pathname.startsWith("/explore")) return "explore";
@@ -279,7 +280,16 @@ export function Sidebar() {
       },
     },
     {
-      item: { icon: History, label: "Nhật ký Kiểm toán (Audit)", href: "/admin/audit-logs" },
+      key: "adminLogs",
+      item: {
+        icon: History,
+        label: "Nhật ký Kiểm toán",
+        href: "/admin/audit-logs",
+        subItems: [
+          { label: "Nhật ký Quản trị (Audit)", href: "/admin/audit-logs" },
+          { label: "Hoạt động Người dùng & IP", href: "/admin/user-logs" },
+        ],
+      },
     },
   ];
 

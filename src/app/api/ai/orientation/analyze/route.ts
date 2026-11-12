@@ -6,6 +6,7 @@ import { runOrientationAnalysis } from "@/lib/orientation-ai";
 import { buildRateLimitResponse, checkRateLimit } from "@/lib/rate-limit";
 import { generatePersonalizedRoadmap } from "@/lib/roadmap-service";
 import { handleAuthError, requireAuth } from "@/lib/session";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { AssessmentSubmission } from "@/models/AssessmentSubmission";
 import { Roadmap } from "@/models/Roadmap";
 import { ROADMAP_STATUS } from "@/constants";
@@ -21,6 +22,20 @@ export async function POST(req: Request) {
     const authUser = await requireAuth(req);
     const rate = checkRateLimit(`ai:analyze:${authUser.id}`, 10, 10 * 60_000);
     if (!rate.allowed) {
+      await logUserActivity({
+        req,
+        actorId: authUser.id,
+        actorEmail: authUser.email,
+        actorName: authUser.name,
+        actorRole: authUser.role,
+        category: "AI",
+        action: "AI_ORIENTATION_BLOCKED",
+        description: "Bị chặn phân tích định hướng AI do vượt giới hạn tần suất",
+        status: "BLOCKED",
+        severity: "HIGH",
+        statusCode: 429,
+        errorMessage: "Rate limit exceeded",
+      });
       return buildRateLimitResponse(
         rate.retryAfterSeconds,
         "Bạn đang yêu cầu phân tích AI quá nhanh. Vui lòng đợi vài phút."
@@ -60,6 +75,22 @@ export async function POST(req: Request) {
     });
 
     if (!aiOutcome.ok) {
+      await logUserActivity({
+        req,
+        actorId: authUser.id,
+        actorEmail: authUser.email,
+        actorName: authUser.name,
+        actorRole: authUser.role,
+        category: "AI",
+        action: "AI_ORIENTATION_FAILED",
+        description: "Phân tích định hướng AI thất bại",
+        status: "FAILED",
+        severity: "WARN",
+        statusCode: 502,
+        errorMessage: aiOutcome.errorMessage,
+        targetCollection: "assessment_submissions",
+        targetId: submissionId,
+      });
       return NextResponse.json(
         {
           success: false,
@@ -90,6 +121,22 @@ export async function POST(req: Request) {
         }
       }
     }
+
+    await logUserActivity({
+      req,
+      actorId: authUser.id,
+      actorEmail: authUser.email,
+      actorName: authUser.name,
+      actorRole: authUser.role,
+      category: "AI",
+      action: "AI_ORIENTATION_ANALYZE",
+      description: "Hoàn tất phân tích định hướng nghề nghiệp bằng AI",
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "orientation_analyses",
+      targetId: String(aiOutcome.analysis._id),
+      metadata: { submissionId, generatedRoadmap: Boolean(roadmap) },
+    });
 
     return NextResponse.json({
       success: true,

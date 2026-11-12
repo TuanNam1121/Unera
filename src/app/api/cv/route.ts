@@ -11,6 +11,7 @@ import { getCvTemplate } from "@/lib/cv-templates";
 import { connectToDatabase } from "@/lib/db";
 import { escapeRegexInput } from "@/lib/orientation-utils";
 import { handleAuthError, requireAuth } from "@/lib/session";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { CvDocument } from "@/models/CvDocument";
 import { createCvSchema } from "@/validations/cv";
 
@@ -163,6 +164,23 @@ export async function POST(req: Request) {
       },
       version: 1,
       lastEditedAt: new Date(),
+    });
+
+    await logUserActivity({
+      req,
+      actorId: authUser.id,
+      actorEmail: authUser.email,
+      actorName: authUser.name,
+      actorRole: authUser.role,
+      category: "CV",
+      action: "CV_CREATE",
+      description: `Tạo hồ sơ CV mới "${title}" (mẫu ${tpl.id})`,
+      status: "SUCCESS",
+      statusCode: 201,
+      targetCollection: "cv_documents",
+      targetId: created._id.toString(),
+      targetTitle: title,
+      metadata: { templateId: tpl.id, locale, targetRole: targetRole || undefined },
     });
 
     return NextResponse.json(

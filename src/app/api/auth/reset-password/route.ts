@@ -10,6 +10,7 @@ import {
   getClientIp,
 } from "@/lib/rate-limit";
 import { hashToken, revokeAllUserRefreshTokens } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { PasswordResetToken } from "@/models/PasswordResetToken";
 import { User } from "@/models/User";
 import { resetPasswordSchema } from "@/validations";
@@ -23,6 +24,17 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const rate = checkRateLimit(`auth:reset:${ip}`, 10, 15 * 60_000);
     if (!rate.allowed) {
+      await logUserActivity({
+        req,
+        actorRole: "GUEST",
+        category: "AUTH",
+        action: "PASSWORD_RESET_BLOCKED",
+        description: `Bị chặn đặt lại mật khẩu do vượt ngưỡng tần suất (${ip})`,
+        status: "BLOCKED",
+        severity: "HIGH",
+        statusCode: 429,
+        errorMessage: "Rate limit exceeded",
+      });
       return buildRateLimitResponse(
         rate.retryAfterSeconds,
         "Bạn đã thử đặt lại mật khẩu quá nhiều lần. Vui lòng thử lại sau."
@@ -46,6 +58,17 @@ export async function POST(req: Request) {
     const resetDoc = await PasswordResetToken.findOne({ tokenHash });
 
     if (!resetDoc) {
+      await logUserActivity({
+        req,
+        actorRole: "GUEST",
+        category: "AUTH",
+        action: "PASSWORD_RESET_FAILED",
+        description: "Đặt lại mật khẩu thất bại: token không hợp lệ hoặc đã dùng",
+        status: "FAILED",
+        severity: "WARN",
+        statusCode: 400,
+        errorMessage: "Invalid reset token",
+      });
       return NextResponse.json(
         { error: "Liên kết khôi phục mật khẩu không hợp lệ hoặc đã được sử dụng." },
         { status: 400 }
@@ -54,6 +77,19 @@ export async function POST(req: Request) {
 
     if (resetDoc.usedAt || resetDoc.expiresAt.getTime() <= Date.now()) {
       await PasswordResetToken.deleteOne({ _id: resetDoc._id });
+      await logUserActivity({
+        req,
+        actorId: resetDoc.userId,
+        actorEmail: resetDoc.email,
+        actorRole: "STUDENT",
+        category: "AUTH",
+        action: "PASSWORD_RESET_FAILED",
+        description: `Đặt lại mật khẩu thất bại cho ${resetDoc.email}: liên kết đã hết hạn`,
+        status: "FAILED",
+        severity: "INFO",
+        statusCode: 400,
+        errorMessage: "Reset token expired",
+      });
       return NextResponse.json(
         { error: "Liên kết khôi phục mật khẩu đã hết hạn. Vui lòng gửi yêu cầu mới." },
         { status: 400 }
@@ -89,6 +125,22 @@ export async function POST(req: Request) {
 
     // Thu hồi toàn bộ Refresh Token đang hoạt động để bảo mật tài khoản sau khi đổi mật khẩu
     await revokeAllUserRefreshTokens(user._id.toString());
+
+    await logUserActivity({
+      req,
+      actorId: user._id,
+      actorEmail: user.email,
+      actorName: user.name,
+      actorRole: user.role,
+      category: "AUTH",
+      action: "PASSWORD_RESET_COMPLETE",
+      description: `Đặt lại mật khẩu thành công cho ${user.email}`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "users",
+      targetId: user._id,
+      targetTitle: user.name,
+    });
 
     const res = NextResponse.json({
       success: true,

@@ -10,6 +10,7 @@ import {
   getClientIp,
 } from "@/lib/rate-limit";
 import { issueTokenPair, resolveUserOnboardingState } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { User } from "@/models/User";
 import { loginSchema } from "@/validations";
 
@@ -22,6 +23,18 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const rate = checkRateLimit(`auth:login:${ip}`, 15, 5 * 60_000);
     if (!rate.allowed) {
+      await logUserActivity({
+        req,
+        actorRole: "GUEST",
+        category: "AUTH",
+        action: "LOGIN_BLOCKED",
+        description: `Bị chặn đăng nhập do vượt ngưỡng tần suất (${ip})`,
+        status: "BLOCKED",
+        severity: "HIGH",
+        statusCode: 429,
+        errorMessage: "Rate limit exceeded",
+        metadata: { retryAfterSeconds: rate.retryAfterSeconds },
+      });
       return buildRateLimitResponse(
         rate.retryAfterSeconds,
         "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau ít phút."
@@ -49,6 +62,18 @@ export async function POST(req: Request) {
 
     const user = await User.findOne({ email });
     if (!user) {
+      await logUserActivity({
+        req,
+        actorEmail: email,
+        actorRole: "GUEST",
+        category: "AUTH",
+        action: "LOGIN_FAILED",
+        description: `Đăng nhập thất bại: email ${email} chưa tồn tại`,
+        status: "FAILED",
+        severity: "WARN",
+        statusCode: 401,
+        errorMessage: "User not found",
+      });
       return NextResponse.json(
         { error: "Email hoặc mật khẩu không chính xác." },
         { status: 401 }
@@ -56,6 +81,23 @@ export async function POST(req: Request) {
     }
 
     if (user.status === ACCOUNT_STATUS.DISABLED) {
+      await logUserActivity({
+        req,
+        actorId: user._id,
+        actorEmail: user.email,
+        actorName: user.name,
+        actorRole: user.role,
+        category: "AUTH",
+        action: "LOGIN_FAILED",
+        description: `Từ chối đăng nhập do tài khoản ${user.email} đang bị vô hiệu hóa`,
+        status: "BLOCKED",
+        severity: "HIGH",
+        statusCode: 403,
+        errorMessage: "Account disabled",
+        targetCollection: "users",
+        targetId: user._id,
+        targetTitle: user.name,
+      });
       return NextResponse.json(
         { error: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên." },
         { status: 403 }
@@ -63,6 +105,23 @@ export async function POST(req: Request) {
     }
 
     if (!user.password) {
+      await logUserActivity({
+        req,
+        actorId: user._id,
+        actorEmail: user.email,
+        actorName: user.name,
+        actorRole: user.role,
+        category: "AUTH",
+        action: "LOGIN_FAILED",
+        description: `Đăng nhập thất bại cho ${user.email}: tài khoản dùng Google OAuth`,
+        status: "FAILED",
+        severity: "INFO",
+        statusCode: 400,
+        errorMessage: "Google account has no password",
+        targetCollection: "users",
+        targetId: user._id,
+        targetTitle: user.name,
+      });
       return NextResponse.json(
         {
           error:
@@ -74,6 +133,23 @@ export async function POST(req: Request) {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      await logUserActivity({
+        req,
+        actorId: user._id,
+        actorEmail: user.email,
+        actorName: user.name,
+        actorRole: user.role,
+        category: "AUTH",
+        action: "LOGIN_FAILED",
+        description: `Đăng nhập thất bại: sai mật khẩu cho tài khoản ${user.email}`,
+        status: "FAILED",
+        severity: "WARN",
+        statusCode: 401,
+        errorMessage: "Invalid password",
+        targetCollection: "users",
+        targetId: user._id,
+        targetTitle: user.name,
+      });
       return NextResponse.json(
         { error: "Email hoặc mật khẩu không chính xác." },
         { status: 401 }
@@ -116,6 +192,23 @@ export async function POST(req: Request) {
         isProfileCompleted,
         onboardingStep,
       },
+    });
+
+    await logUserActivity({
+      req,
+      actorId: user._id,
+      actorEmail: user.email,
+      actorName: user.name,
+      actorRole: user.role,
+      category: "AUTH",
+      action: "LOGIN_SUCCESS",
+      description: `Đăng nhập thành công bằng email/mật khẩu (${user.email})`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "users",
+      targetId: user._id,
+      targetTitle: user.name,
+      metadata: { rememberMe, redirectTo },
     });
 
     setAuthCookies(response, accessToken, refreshToken, rememberMe);

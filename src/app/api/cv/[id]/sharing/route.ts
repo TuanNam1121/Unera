@@ -7,6 +7,7 @@ import {
 } from "@/lib/cv-service";
 import { connectToDatabase } from "@/lib/db";
 import { handleAuthError, requireAuth } from "@/lib/session";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { CvDocument } from "@/models/CvDocument";
 import { updateCvSharingSchema } from "@/validations/cv";
 
@@ -72,6 +73,29 @@ export async function PATCH(req: Request, context: RouteContext) {
     }
 
     await cv.save();
+
+    await logUserActivity({
+      req,
+      actorId: authUser.id,
+      actorEmail: authUser.email,
+      actorName: authUser.name,
+      actorRole: authUser.role,
+      category: "CV",
+      action: "CV_SHARE_TOGGLE",
+      description: `${
+        cv.sharing.isPublic ? "Bật chia sẻ công khai" : "Tắt chia sẻ công khai"
+      } CV "${cv.title}"`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "cv_documents",
+      targetId: cv._id.toString(),
+      targetTitle: cv.title,
+      metadata: {
+        isPublic: cv.sharing.isPublic,
+        allowPdfDownload: cv.sharing.allowPdfDownload,
+        regeneratedSlug: Boolean(regenerateSlug),
+      },
+    });
 
     return NextResponse.json({
       success: true,

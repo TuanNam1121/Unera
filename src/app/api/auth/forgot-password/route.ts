@@ -10,6 +10,7 @@ import {
   getClientIp,
 } from "@/lib/rate-limit";
 import { generateSecureToken, hashToken } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { PasswordResetToken } from "@/models/PasswordResetToken";
 import { User } from "@/models/User";
 import { forgotPasswordSchema } from "@/validations";
@@ -26,6 +27,17 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const rate = checkRateLimit(`auth:forgot:${ip}`, 5, 15 * 60_000);
     if (!rate.allowed) {
+      await logUserActivity({
+        req,
+        actorRole: "GUEST",
+        category: "AUTH",
+        action: "PASSWORD_RESET_BLOCKED",
+        description: `Bị chặn yêu cầu quên mật khẩu do vượt ngưỡng tần suất (${ip})`,
+        status: "BLOCKED",
+        severity: "HIGH",
+        statusCode: 429,
+        errorMessage: "Rate limit exceeded",
+      });
       return buildRateLimitResponse(
         rate.retryAfterSeconds,
         "Bạn đã gửi quá nhiều yêu cầu khôi phục mật khẩu. Vui lòng thử lại sau."
@@ -47,6 +59,25 @@ export async function POST(req: Request) {
 
     const user = await User.findOne({ email });
     if (!user || user.status === ACCOUNT_STATUS.DISABLED) {
+      await logUserActivity({
+        req,
+        actorId: user?._id || null,
+        actorEmail: email,
+        actorName: user?.name,
+        actorRole: user?.role || "GUEST",
+        category: "AUTH",
+        action: "PASSWORD_RESET_REQUEST",
+        description: `Yêu cầu khôi phục mật khẩu cho ${email} (${
+          !user ? "email không tồn tại" : "tài khoản đang khóa"
+        })`,
+        status: "FAILED",
+        severity: user?.status === ACCOUNT_STATUS.DISABLED ? "WARN" : "INFO",
+        statusCode: 200,
+        metadata: {
+          accountExists: Boolean(user),
+          accountDisabled: user?.status === ACCOUNT_STATUS.DISABLED,
+        },
+      });
       return NextResponse.json({
         success: true,
         message: GENERIC_SUCCESS_MESSAGE,
@@ -76,6 +107,26 @@ export async function POST(req: Request) {
       to: user.email,
       recipientName: user.name,
       resetUrl,
+    });
+
+    await logUserActivity({
+      req,
+      actorId: user._id,
+      actorEmail: user.email,
+      actorName: user.name,
+      actorRole: user.role,
+      category: "AUTH",
+      action: "PASSWORD_RESET_REQUEST",
+      description: `Gửi yêu cầu khôi phục mật khẩu cho ${user.email}`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "users",
+      targetId: user._id,
+      targetTitle: user.name,
+      metadata: {
+        accountExists: true,
+        emailDelivered: emailResult.delivered,
+      },
     });
 
     const isDev = process.env.NODE_ENV !== "production";

@@ -19,6 +19,7 @@ import {
   issueTokenPair,
   resolveUserOnboardingState,
 } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { StudentProfile } from "@/models/StudentProfile";
 import { User } from "@/models/User";
 
@@ -189,9 +190,27 @@ export async function handleGoogleOAuthCallback(
     let user = await User.findOne({
       $or: [{ googleId: googleProfile.sub }, { email: normalizedEmail }],
     });
+    const isNewUser = !user;
 
     if (user) {
       if (user.status === ACCOUNT_STATUS.DISABLED) {
+        await logUserActivity({
+          req,
+          actorId: user._id,
+          actorEmail: user.email,
+          actorName: user.name,
+          actorRole: user.role,
+          category: "AUTH",
+          action: "LOGIN_GOOGLE_BLOCKED",
+          description: `Từ chối đăng nhập Google do tài khoản ${user.email} bị vô hiệu hóa`,
+          status: "BLOCKED",
+          severity: "HIGH",
+          statusCode: 403,
+          errorMessage: "AccountDisabled",
+          targetCollection: "users",
+          targetId: user._id,
+          targetTitle: user.name,
+        });
         return clearStateCookie(redirectToLoginWithError("AccountDisabled"));
       }
 
@@ -278,6 +297,26 @@ export async function handleGoogleOAuthCallback(
 
     const response = NextResponse.redirect(new URL(targetPath, getAppBaseUrl()));
     setAuthCookies(response, accessToken, refreshToken, true);
+
+    await logUserActivity({
+      req,
+      actorId: user._id,
+      actorEmail: user.email,
+      actorName: user.name,
+      actorRole: user.role,
+      category: "AUTH",
+      action: "LOGIN_GOOGLE_SUCCESS",
+      description: isNewUser
+        ? `Đăng ký & đăng nhập mới bằng Google (${user.email})`
+        : `Đăng nhập thành công bằng Google (${user.email})`,
+      status: "SUCCESS",
+      statusCode: 302,
+      targetCollection: "users",
+      targetId: user._id,
+      targetTitle: user.name,
+      metadata: { isNewUser, redirectTo: targetPath },
+    });
+
     return clearStateCookie(response);
   } catch (error) {
     console.error("[Google OAuth Error]", error);

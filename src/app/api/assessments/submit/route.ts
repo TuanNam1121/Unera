@@ -15,6 +15,7 @@ import { ACCESS_TOKEN_MAX_AGE_SECONDS, getAuthCookieOptions } from "@/lib/jwt";
 import { runOrientationAnalysis } from "@/lib/orientation-ai";
 import { handleAuthError, requireAuth } from "@/lib/session";
 import { signAccessTokenForUser } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { AssessmentQuestion } from "@/models/AssessmentQuestion";
 import { AssessmentSubmission } from "@/models/AssessmentSubmission";
 import { Questionnaire } from "@/models/Questionnaire";
@@ -168,6 +169,26 @@ export async function POST(req: Request) {
     const aiOutcome = await runOrientationAnalysis({
       studentId: authUser.id,
       submissionId: submission._id.toString(),
+    });
+
+    await logUserActivity({
+      req,
+      actorId: authUser.id,
+      actorEmail: authUser.email,
+      actorName: authUser.name,
+      actorRole: authUser.role,
+      category: "ASSESSMENT",
+      action: "ASSESSMENT_SUBMIT",
+      description: `Nộp bài đánh giá "${questionnaire.title}" (lần ${submission.attemptNumber})`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "assessment_submissions",
+      targetId: submission._id.toString(),
+      targetTitle: questionnaire.title,
+      metadata: {
+        attemptNumber: submission.attemptNumber,
+        aiAnalysisOk: aiOutcome.ok,
+      },
     });
 
     const response = NextResponse.json({

@@ -15,6 +15,7 @@ import {
   getClientIp,
 } from "@/lib/rate-limit";
 import { issueTokenPair } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { StudentProfile } from "@/models/StudentProfile";
 import { User } from "@/models/User";
 import { registerSchema } from "@/validations";
@@ -29,6 +30,18 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const rate = checkRateLimit(`auth:register:${ip}`, 10, 15 * 60_000);
     if (!rate.allowed) {
+      await logUserActivity({
+        req,
+        actorRole: "GUEST",
+        category: "AUTH",
+        action: "REGISTER_BLOCKED",
+        description: `Bị chặn đăng ký do vượt ngưỡng tần suất (${ip})`,
+        status: "BLOCKED",
+        severity: "HIGH",
+        statusCode: 429,
+        errorMessage: "Rate limit exceeded",
+        metadata: { retryAfterSeconds: rate.retryAfterSeconds },
+      });
       return buildRateLimitResponse(
         rate.retryAfterSeconds,
         "Quá nhiều yêu cầu đăng ký từ thiết bị này. Vui lòng thử lại sau."
@@ -53,6 +66,18 @@ export async function POST(req: Request) {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      await logUserActivity({
+        req,
+        actorEmail: email,
+        actorRole: "GUEST",
+        category: "AUTH",
+        action: "REGISTER_FAILED",
+        description: `Đăng ký thất bại: email ${email} đã tồn tại`,
+        status: "FAILED",
+        severity: "INFO",
+        statusCode: 409,
+        errorMessage: "Email already exists",
+      });
       return NextResponse.json(
         { error: "Địa chỉ email này đã được đăng ký trong hệ thống." },
         { status: 409 }
@@ -112,6 +137,22 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
+
+    await logUserActivity({
+      req,
+      actorId: newUser._id,
+      actorEmail: newUser.email,
+      actorName: newUser.name,
+      actorRole: newUser.role,
+      category: "AUTH",
+      action: "REGISTER_SUCCESS",
+      description: `Đăng ký tài khoản mới thành công (${newUser.email})`,
+      status: "SUCCESS",
+      statusCode: 201,
+      targetCollection: "users",
+      targetId: newUser._id,
+      targetTitle: newUser.name,
+    });
 
     setAuthCookies(response, accessToken, refreshToken, false);
     return response;

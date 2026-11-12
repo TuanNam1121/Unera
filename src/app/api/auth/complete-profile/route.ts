@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/db";
 import { ACCESS_TOKEN_MAX_AGE_SECONDS, getAuthCookieOptions } from "@/lib/jwt";
 import { handleAuthError, requireAuth } from "@/lib/session";
 import { signAccessTokenForUser } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { StudentProfile } from "@/models/StudentProfile";
 import { User } from "@/models/User";
 import { completeProfileSchema } from "@/validations";
@@ -79,6 +80,23 @@ export async function POST(req: Request) {
     );
 
     const newAccessToken = await signAccessTokenForUser(currentUser);
+
+    await logUserActivity({
+      req,
+      actorId: currentUser._id,
+      actorEmail: currentUser.email,
+      actorName: currentUser.name,
+      actorRole: currentUser.role,
+      category: "PROFILE",
+      action: "PROFILE_COMPLETE",
+      description: `Hoàn thiện hồ sơ onboarding bước 2 (${university} - ${major})`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "student_profiles",
+      targetId: updatedProfile?._id || currentUser._id,
+      targetTitle: fullName,
+      metadata: { academicYear, university, major },
+    });
 
     const response = NextResponse.json({
       success: true,

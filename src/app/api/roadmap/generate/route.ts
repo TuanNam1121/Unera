@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/db";
 import { buildRateLimitResponse, checkRateLimit } from "@/lib/rate-limit";
 import { generatePersonalizedRoadmap } from "@/lib/roadmap-service";
 import { handleAuthError, requireAuth } from "@/lib/session";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { regenerateRoadmapSchema } from "@/validations/roadmap";
 
 export const maxDuration = 60;
@@ -17,6 +18,20 @@ export async function POST(req: Request) {
     const authUser = await requireAuth(req);
     const rate = checkRateLimit(`ai:roadmap:${authUser.id}`, 10, 10 * 60_000);
     if (!rate.allowed) {
+      await logUserActivity({
+        req,
+        actorId: authUser.id,
+        actorEmail: authUser.email,
+        actorName: authUser.name,
+        actorRole: authUser.role,
+        category: "AI",
+        action: "AI_ROADMAP_BLOCKED",
+        description: "Bị chặn tạo lộ trình AI do vượt giới hạn tần suất",
+        status: "BLOCKED",
+        severity: "HIGH",
+        statusCode: 429,
+        errorMessage: "Rate limit exceeded",
+      });
       return buildRateLimitResponse(
         rate.retryAfterSeconds,
         "Bạn đã yêu cầu tạo lộ trình AI quá nhiều lần. Vui lòng thử lại sau ít phút."
@@ -42,6 +57,24 @@ export async function POST(req: Request) {
     });
 
     if (!outcome.ok || !outcome.roadmap) {
+      await logUserActivity({
+        req,
+        actorId: authUser.id,
+        actorEmail: authUser.email,
+        actorName: authUser.name,
+        actorRole: authUser.role,
+        category: "AI",
+        action: "AI_ROADMAP_FAILED",
+        description: "Tạo lộ trình AI thất bại",
+        status: "FAILED",
+        severity: "WARN",
+        statusCode: 502,
+        errorMessage: outcome.errorMessage,
+        metadata: {
+          analysisId: parsed.data.analysisId,
+          targetDirection: parsed.data.targetDirection,
+        },
+      });
       return NextResponse.json(
         {
           success: false,
@@ -52,6 +85,26 @@ export async function POST(req: Request) {
         { status: 502 }
       );
     }
+
+    await logUserActivity({
+      req,
+      actorId: authUser.id,
+      actorEmail: authUser.email,
+      actorName: authUser.name,
+      actorRole: authUser.role,
+      category: "AI",
+      action: "AI_ROADMAP_GENERATE",
+      description: `Tạo lộ trình AI v${outcome.roadmap.version}: "${outcome.roadmap.title}"`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "roadmaps",
+      targetId: outcome.roadmap._id,
+      targetTitle: outcome.roadmap.title,
+      metadata: {
+        version: outcome.roadmap.version,
+        orientationDirection: outcome.roadmap.orientationDirection,
+      },
+    });
 
     return NextResponse.json({
       success: true,

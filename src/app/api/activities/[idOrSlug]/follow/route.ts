@@ -4,6 +4,7 @@ import { ACTIVITY_PUBLISH_STATUS } from "@/constants";
 import { connectToDatabase } from "@/lib/db";
 import { handleAuthError, requireAuth } from "@/lib/session";
 import { revalidateActivityRoutes } from "@/lib/activities";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { followActivitySchema } from "@/validations";
 import { StudentActivity } from "@/models/StudentActivity";
 import { ActivityFollow } from "@/models/ActivityFollow";
@@ -93,6 +94,25 @@ export async function POST(
     }
 
     revalidateActivityRoutes(activity.slug);
+
+    if (!existing) {
+      await logUserActivity({
+        req,
+        actorId: user.id,
+        actorEmail: user.email,
+        actorName: user.name,
+        actorRole: user.role,
+        category: "ACTIVITY",
+        action: "ACTIVITY_FOLLOW",
+        description: `Theo dõi hoạt động "${activity.title}"`,
+        status: "SUCCESS",
+        statusCode: 200,
+        targetCollection: "student_activities",
+        targetId: activityObjId.toString(),
+        targetTitle: activity.title,
+        metadata: { notifyDeadline, notifyEvent, slug: activity.slug },
+      });
+    }
 
     return NextResponse.json({
       success: true,

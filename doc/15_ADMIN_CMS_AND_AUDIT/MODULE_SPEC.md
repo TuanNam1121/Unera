@@ -56,6 +56,7 @@ Cụm tính năng Quản trị được thiết kế là xương sống vận h�
 | **FR-ADM-01 & 02** | Bảng điều khiển vận hành & Quản trị tài khoản sinh viên | Admin | [`FR-ADM-01_02_STUDENT_MGMT.md`](./FR-ADM-01_02_STUDENT_MGMT.md) |
 | **FR-ADM-14 & 20** | Nhật ký kiểm toán bảo mật (Audit Trail) & Quản lý Metadata | Admin | [`FR-ADM-14_20_AUDIT_LOGGING.md`](./FR-ADM-14_20_AUDIT_LOGGING.md) |
 | **FR-ADM-16 đến 19** | Kiểm soát cập nhật đồng thời (Optimistic Locking) & Giải quyết xung đột | Admin | [`FR-ADM-16_19_CONCURRENT_RESOLUTION.md`](./FR-ADM-16_19_CONCURRENT_RESOLUTION.md) |
+| **FR-ADM-21** | Nhật ký hoạt động Người dùng hệ thống & Địa chỉ IP | Admin | [`FR-ADM-21_USER_ACTIVITY_AUDIT.md`](./FR-ADM-21_USER_ACTIVITY_AUDIT.md) |
 
 ---
 

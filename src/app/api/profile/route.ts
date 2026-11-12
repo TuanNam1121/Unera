@@ -8,6 +8,7 @@ import {
 } from "@/lib/profile-skills";
 import { handleAuthError, requireAuth } from "@/lib/session";
 import { signAccessTokenForUser } from "@/lib/tokens";
+import { logUserActivity } from "@/lib/user-activity-log";
 import { StudentProfile } from "@/models/StudentProfile";
 import { User } from "@/models/User";
 import type { IDevelopmentGoals } from "@/types";
@@ -197,6 +198,23 @@ export async function PUT(req: Request) {
     }
 
     const formatted = formatProfileResponse(updatedProfile);
+    await logUserActivity({
+      req,
+      actorId: authUser.id,
+      actorEmail: authUser.email,
+      actorName: updatedUserDoc?.name || authUser.name,
+      actorRole: authUser.role,
+      category: "PROFILE",
+      action: "PROFILE_UPDATE",
+      description: `Cập nhật hồ sơ sinh viên (${Object.keys(updateData).length} trường)`,
+      status: "SUCCESS",
+      statusCode: 200,
+      targetCollection: "student_profiles",
+      targetId: String(updatedProfile?._id || authUser.id),
+      targetTitle: updatedUserDoc?.name || authUser.name,
+      metadata: { updatedFields: Object.keys(updateData) },
+    });
+
     const response = NextResponse.json({
       success: true,
       message: "Cập nhật hồ sơ sinh viên thành công!",

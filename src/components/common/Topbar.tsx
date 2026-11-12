@@ -80,6 +80,12 @@ export function Topbar() {
     if (pathname.startsWith("/admin/activities")) {
       return "Quản trị Hoạt động sinh viên";
     }
+    if (pathname.startsWith("/admin/user-logs")) {
+      return "Hoạt động Người dùng & IP";
+    }
+    if (pathname.startsWith("/admin/audit-logs")) {
+      return "Nhật ký Kiểm toán Quản trị";
+    }
     if (pathname.startsWith("/admin")) return "Bảng điều khiển Quản trị";
     if (pathname.startsWith("/login")) return "Đăng nhập";
     if (pathname === "/register/complete-profile") return "Hoàn thiện hồ sơ";
