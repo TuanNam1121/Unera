@@ -362,12 +362,16 @@ async function recalculateAffectedCounters(params: {
   const attachSession = <T>(query: { session: (s: ClientSession | null) => T }) =>
     params.session ? query.session(params.session) : (query as unknown as T);
 
+  // Thực thi tuần tự thay vì Promise.all vì MongoDB Replica Set (Atlas) không cho phép
+  // chạy nhiều lệnh song song trên cùng một ClientSession transaction.
   for (const [actIdStr, removedCount] of params.activityRemovedCounts) {
     const actId = new Types.ObjectId(actIdStr);
-    const [activityDoc, realCount] = await Promise.all([
-      attachSession(StudentActivity.findById(actId).select("followerCount").lean()),
-      attachSession(ActivityFollow.countDocuments({ activityId: actId })),
-    ]);
+    const activityDoc = await attachSession(
+      StudentActivity.findById(actId).select("followerCount").lean()
+    );
+    const realCount = await attachSession(
+      ActivityFollow.countDocuments({ activityId: actId })
+    );
     const nextFollowerCount = Math.max(
       realCount,
       (activityDoc?.followerCount ?? 0) - removedCount
@@ -390,19 +394,19 @@ async function recalculateAffectedCounters(params: {
     const hasLikeChange = params.articleLikeRemovedCounts.has(artIdStr);
     const hasCommentChange = commentArticleSet.has(artIdStr);
 
-    const [articleDoc, realLikes, realComments] = await Promise.all([
-      hasLikeChange
-        ? attachSession(OrientationArticle.findById(artId).select("likeCount").lean())
-        : Promise.resolve(null),
-      hasLikeChange
-        ? attachSession(ArticleLike.countDocuments({ articleId: artId }))
-        : Promise.resolve(0),
-      hasCommentChange
-        ? attachSession(
-            ArticleComment.countDocuments({ articleId: artId, isDeleted: false })
-          )
-        : Promise.resolve(0),
-    ]);
+    const articleDoc = hasLikeChange
+      ? await attachSession(
+          OrientationArticle.findById(artId).select("likeCount").lean()
+        )
+      : null;
+    const realLikes = hasLikeChange
+      ? await attachSession(ArticleLike.countDocuments({ articleId: artId }))
+      : 0;
+    const realComments = hasCommentChange
+      ? await attachSession(
+          ArticleComment.countDocuments({ articleId: artId, isDeleted: false })
+        )
+      : 0;
 
     const updateSet: Record<string, number> = {};
     if (hasLikeChange) {
@@ -426,10 +430,12 @@ async function recalculateAffectedCounters(params: {
 
   for (const [newsIdStr, removedCount] of params.newsBookmarkRemovedCounts) {
     const newsId = new Types.ObjectId(newsIdStr);
-    const [newsDoc, realCount] = await Promise.all([
-      attachSession(NewsArticle.findById(newsId).select("bookmarkCount").lean()),
-      attachSession(NewsBookmark.countDocuments({ articleId: newsId })),
-    ]);
+    const newsDoc = await attachSession(
+      NewsArticle.findById(newsId).select("bookmarkCount").lean()
+    );
+    const realCount = await attachSession(
+      NewsBookmark.countDocuments({ articleId: newsId })
+    );
     const nextBookmarkCount = Math.max(
       realCount,
       (newsDoc?.bookmarkCount ?? 0) - removedCount
@@ -499,25 +505,19 @@ export async function cascadeDeleteUserService(params: {
     const withSession = <T>(query: { session: (s: ClientSession | null) => T }) =>
       session ? query.session(session) : (query as unknown as T);
 
-    const [
-      followedActivityDocs,
-      likedArticleDocs,
-      userComments,
-      bookmarkedNewsDocs,
-    ] = await Promise.all([
-      withSession(
-        ActivityFollow.find({ studentId: targetObjId }).select("activityId").lean()
-      ),
-      withSession(
-        ArticleLike.find({ userId: targetObjId }).select("articleId").lean()
-      ),
-      withSession(
-        ArticleComment.find({ userId: targetObjId }).select("_id articleId").lean()
-      ),
-      withSession(
-        NewsBookmark.find({ userId: targetObjId }).select("articleId").lean()
-      ),
-    ]);
+    // Thực thi tuần tự mọi truy vấn/ghi trên cùng session để tương thích MongoDB Atlas non-sharded cluster
+    const followedActivityDocs = await withSession(
+      ActivityFollow.find({ studentId: targetObjId }).select("activityId").lean()
+    );
+    const likedArticleDocs = await withSession(
+      ArticleLike.find({ userId: targetObjId }).select("articleId").lean()
+    );
+    const userComments = await withSession(
+      ArticleComment.find({ userId: targetObjId }).select("_id articleId").lean()
+    );
+    const bookmarkedNewsDocs = await withSession(
+      NewsBookmark.find({ userId: targetObjId }).select("articleId").lean()
+    );
 
     const userCommentIds = userComments.map((c) => c._id);
     const childReplyArticles = userCommentIds.length
@@ -549,44 +549,42 @@ export async function cascadeDeleteUserService(params: {
       ])
     );
 
-    await Promise.all([
-      RefreshToken.deleteMany({ userId: targetObjId }, opts),
-      PasswordResetToken.deleteMany(
-        { $or: [{ userId: targetObjId }, { email: targetEmailLower }] },
-        opts
-      ),
-      StudentProfile.deleteMany({ userId: strId }, opts),
-      ReminderSetting.deleteMany({ userId: targetObjId }, opts),
-      AssessmentSubmission.deleteMany({ studentId: targetObjId }, opts),
-      AiOrientationAnalysis.deleteMany({ studentId: targetObjId }, opts),
-      Roadmap.deleteMany({ studentId: targetObjId }, opts),
-      ActivityFollow.deleteMany({ studentId: targetObjId }, opts),
-      Notification.deleteMany({ recipientId: strId }, opts),
-      ArticleLike.deleteMany({ userId: targetObjId }, opts),
-      ArticleComment.deleteMany(
-        userCommentIds.length
-          ? {
-              $or: [
-                { userId: targetObjId },
-                { parentCommentId: { $in: userCommentIds } },
-              ],
-            }
-          : { userId: targetObjId },
-        opts
-      ),
-      NewsBookmark.deleteMany({ userId: targetObjId }, opts),
-      NewsReadingHistory.deleteMany({ userId: targetObjId }, opts),
-      ToolResult.deleteMany({ userId: targetObjId }, opts),
-      BookingRequest.deleteMany({ studentId: strId }, opts),
-      CvDocument.deleteMany({ userId: targetObjId }, opts),
-      MediaAsset.deleteMany(
-        {
-          uploadedBy: targetObjId,
-          $or: [{ usedBy: { $size: 0 } }, { usedBy: { $exists: false } }],
-        },
-        opts
-      ),
-    ]);
+    await RefreshToken.deleteMany({ userId: targetObjId }, opts);
+    await PasswordResetToken.deleteMany(
+      { $or: [{ userId: targetObjId }, { email: targetEmailLower }] },
+      opts
+    );
+    await StudentProfile.deleteMany({ userId: strId }, opts);
+    await ReminderSetting.deleteMany({ userId: targetObjId }, opts);
+    await AssessmentSubmission.deleteMany({ studentId: targetObjId }, opts);
+    await AiOrientationAnalysis.deleteMany({ studentId: targetObjId }, opts);
+    await Roadmap.deleteMany({ studentId: targetObjId }, opts);
+    await ActivityFollow.deleteMany({ studentId: targetObjId }, opts);
+    await Notification.deleteMany({ recipientId: strId }, opts);
+    await ArticleLike.deleteMany({ userId: targetObjId }, opts);
+    await ArticleComment.deleteMany(
+      userCommentIds.length
+        ? {
+            $or: [
+              { userId: targetObjId },
+              { parentCommentId: { $in: userCommentIds } },
+            ],
+          }
+        : { userId: targetObjId },
+      opts
+    );
+    await NewsBookmark.deleteMany({ userId: targetObjId }, opts);
+    await NewsReadingHistory.deleteMany({ userId: targetObjId }, opts);
+    await ToolResult.deleteMany({ userId: targetObjId }, opts);
+    await BookingRequest.deleteMany({ studentId: strId }, opts);
+    await CvDocument.deleteMany({ userId: targetObjId }, opts);
+    await MediaAsset.deleteMany(
+      {
+        uploadedBy: targetObjId,
+        $or: [{ usedBy: { $size: 0 } }, { usedBy: { $exists: false } }],
+      },
+      opts
+    );
 
     await recalculateAffectedCounters({
       activityRemovedCounts,
@@ -596,59 +594,57 @@ export async function cascadeDeleteUserService(params: {
       session,
     });
 
-    await Promise.all([
-      MediaAsset.updateMany(
-        { uploadedBy: targetObjId },
-        { $set: { uploadedBy: null } },
-        opts
-      ),
-      OrientationArticle.updateMany(
-        { createdByAdminId: targetObjId },
-        { $set: { createdByAdminId: null } },
-        opts
-      ),
-      NewsArticle.updateMany(
-        { createdBy: targetObjId },
-        { $set: { createdBy: null } },
-        opts
-      ),
-      NewsArticle.updateMany(
-        { updatedByAdminId: targetObjId },
-        { $set: { updatedByAdminId: null } },
-        opts
-      ),
-      StudentActivity.updateMany(
-        { createdBy: targetObjId },
-        { $set: { createdBy: null } },
-        opts
-      ),
-      StudentActivity.updateMany(
-        { updatedByAdminId: targetObjId },
-        { $set: { updatedByAdminId: null } },
-        opts
-      ),
-      Questionnaire.updateMany(
-        { createdByAdminId: targetObjId },
-        { $set: { createdByAdminId: null } },
-        opts
-      ),
-      SystemPrompt.updateMany(
-        { updatedByAdminId: targetObjId },
-        { $set: { updatedByAdminId: null } },
-        opts
-      ),
-      AuditLog.updateMany(
-        { adminId: targetObjId },
-        {
-          $set: {
-            adminId: null,
-            adminEmail: "deleted-user@system.local",
-            adminName: "Tài khoản đã xóa",
-          },
+    await MediaAsset.updateMany(
+      { uploadedBy: targetObjId },
+      { $set: { uploadedBy: null } },
+      opts
+    );
+    await OrientationArticle.updateMany(
+      { createdByAdminId: targetObjId },
+      { $set: { createdByAdminId: null } },
+      opts
+    );
+    await NewsArticle.updateMany(
+      { createdBy: targetObjId },
+      { $set: { createdBy: null } },
+      opts
+    );
+    await NewsArticle.updateMany(
+      { updatedByAdminId: targetObjId },
+      { $set: { updatedByAdminId: null } },
+      opts
+    );
+    await StudentActivity.updateMany(
+      { createdBy: targetObjId },
+      { $set: { createdBy: null } },
+      opts
+    );
+    await StudentActivity.updateMany(
+      { updatedByAdminId: targetObjId },
+      { $set: { updatedByAdminId: null } },
+      opts
+    );
+    await Questionnaire.updateMany(
+      { createdByAdminId: targetObjId },
+      { $set: { createdByAdminId: null } },
+      opts
+    );
+    await SystemPrompt.updateMany(
+      { updatedByAdminId: targetObjId },
+      { $set: { updatedByAdminId: null } },
+      opts
+    );
+    await AuditLog.updateMany(
+      { adminId: targetObjId },
+      {
+        $set: {
+          adminId: null,
+          adminEmail: "deleted-user@system.local",
+          adminName: "Tài khoản đã xóa",
         },
-        opts
-      ),
-    ]);
+      },
+      opts
+    );
 
     await User.deleteOne({ _id: targetObjId }, opts);
   });

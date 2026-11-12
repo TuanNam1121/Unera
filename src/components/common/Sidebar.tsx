@@ -11,14 +11,12 @@ import {
   User,
   GraduationCap,
   Newspaper,
-  Award,
   Wrench,
   ChevronDown,
   ChevronRight,
   ShieldCheck,
   Users,
   CalendarCheck,
-  FolderTree,
   ClipboardList,
   History,
   ArrowLeft,
@@ -64,7 +62,6 @@ export function Sidebar() {
       if (pathname.startsWith("/admin/explore")) return "adminExplore";
       if (pathname.startsWith("/admin/media")) return "adminMedia";
       if (pathname.startsWith("/admin/mentors") || pathname.startsWith("/admin/bookings")) return "adminMentors";
-      if (pathname.startsWith("/admin/certificates")) return "adminCatalog";
       if (pathname.startsWith("/admin/quiz") || pathname.startsWith("/admin/ai-prompts")) return "adminQuiz";
       return null;
     }
@@ -79,7 +76,6 @@ export function Sidebar() {
     }
     if (pathname.startsWith("/activities")) return "activities";
     if (pathname.startsWith("/news")) return "news";
-    if (pathname.startsWith("/certificates")) return "certificates";
     if (pathname.startsWith("/tools") || pathname.startsWith("/onboarding")) return "tools";
     return null;
   }, [pathname, isAdminRoute]);
@@ -271,17 +267,6 @@ export function Sidebar() {
       },
     },
     {
-      key: "adminCatalog",
-      item: {
-        icon: FolderTree,
-        label: "Quản lý Chứng chỉ",
-        href: "/admin/certificates",
-        subItems: [
-          { label: "Danh mục Chứng chỉ", href: "/admin/certificates" },
-        ],
-      },
-    },
-    {
       key: "adminQuiz",
       item: {
         icon: ClipboardList,
@@ -405,20 +390,6 @@ export function Sidebar() {
         label: "Tin tức & Cơ hội",
         href: "/news",
         subItems: dynamicNewsSubItems,
-      },
-    },
-    {
-      key: "certificates",
-      item: {
-        icon: Award,
-        label: "Chứng chỉ",
-        href: "/certificates",
-        subItems: [
-          { label: "Ngôn ngữ", href: "/certificates?cat=languages" },
-          { label: "Nghề nghiệp", href: "/certificates?cat=career" },
-          { label: "· Giáo viên", href: "/certificates?cat=teacher" },
-          { label: "· Biên phiên dịch", href: "/certificates?cat=translation" },
-        ],
       },
     },
     {
