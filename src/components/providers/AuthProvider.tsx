@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -54,8 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastSyncRef = useRef<number>(0);
 
   const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
+    lastSyncRef.current = Date.now();
     const currentUser = await fetchCurrentSessionUser();
     setUser(currentUser);
     setLoading(false);
@@ -64,15 +67,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    lastSyncRef.current = Date.now();
     fetchCurrentSessionUser().then((currentUser) => {
       if (!active) return;
       setUser(currentUser);
       setLoading(false);
     });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastSyncRef.current < 30_000) return;
+      refreshUser().catch(() => {});
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       active = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [refreshUser]);
 
   const logout = useCallback(
     async (redirectTo = "/login") => {

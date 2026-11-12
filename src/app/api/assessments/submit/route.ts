@@ -13,7 +13,6 @@ import {
 import { connectToDatabase } from "@/lib/db";
 import { ACCESS_TOKEN_MAX_AGE_SECONDS, getAuthCookieOptions } from "@/lib/jwt";
 import { runOrientationAnalysis } from "@/lib/orientation-ai";
-import { generatePersonalizedRoadmap } from "@/lib/roadmap-service";
 import { handleAuthError, requireAuth } from "@/lib/session";
 import { signAccessTokenForUser } from "@/lib/tokens";
 import { AssessmentQuestion } from "@/models/AssessmentQuestion";
@@ -27,7 +26,7 @@ export const maxDuration = 60;
 /**
  * POST /api/assessments/submit
  * PA09: Validate conditional + required -> lưu SUBMITTED -> cập nhật onboardingStep
- * -> kích hoạt Gemini AI Analysis (AI01–AI09) -> sinh Lộ trình 4 năm (RM01).
+ * -> kích hoạt Gemini AI Analysis (AI01–AI09). Lộ trình 4 năm sẽ được sinh khi người dùng chọn hướng mục tiêu.
  */
 export async function POST(req: Request) {
   try {
@@ -165,26 +164,11 @@ export async function POST(req: Request) {
       refreshedToken = await signAccessTokenForUser(dbUser);
     }
 
-    // Gọi Gemini AI Phân tích định hướng (AI01-AI09)
+    // Gọi Gemini AI Phân tích định hướng (AI01-AI09); lộ trình sẽ do người dùng chọn hướng trên trang kết quả
     const aiOutcome = await runOrientationAnalysis({
       studentId: authUser.id,
       submissionId: submission._id.toString(),
     });
-
-    let roadmapResult = null;
-    let roadmapError: string | undefined;
-
-    if (aiOutcome.ok) {
-      const rmOutcome = await generatePersonalizedRoadmap({
-        studentId: authUser.id,
-        analysisId: aiOutcome.analysis._id,
-      });
-      if (rmOutcome.ok && rmOutcome.roadmap) {
-        roadmapResult = rmOutcome.roadmap;
-      } else {
-        roadmapError = rmOutcome.errorMessage;
-      }
-    }
 
     const response = NextResponse.json({
       success: true,
@@ -193,8 +177,8 @@ export async function POST(req: Request) {
         : "Đã lưu bài khảo sát thành công. Quá trình phân tích AI đang gặp sự cố tạm thời, bạn có thể thử phân tích lại ngay ở trang kết quả.",
       submission: serializeSubmission(submission, questionnaire.title),
       analysis: aiOutcome.analysis,
-      roadmap: roadmapResult,
-      aiError: aiOutcome.errorMessage || roadmapError || null,
+      roadmap: null,
+      aiError: aiOutcome.errorMessage || null,
     });
 
     if (refreshedToken) {

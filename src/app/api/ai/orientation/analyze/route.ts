@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const submissionId =
       typeof body?.submissionId === "string" ? body.submissionId.trim() : "";
     const generateRoadmapIfMissing =
-      body?.generateRoadmapIfMissing !== false;
+      body?.generateRoadmapIfMissing === true;
 
     if (!submissionId || !Types.ObjectId.isValid(submissionId)) {
       return NextResponse.json(

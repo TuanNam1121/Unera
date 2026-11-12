@@ -263,7 +263,7 @@ function OnboardingAssessmentContent() {
 
     setSubmitting(true);
     setSubmitStage(
-      "Đang lưu bài khảo sát & gọi AI Gemini phân tích định hướng + kiến tạo lộ trình 4 năm..."
+      "Đang lưu bài khảo sát & gọi AI Gemini phân tích định hướng cá nhân..."
     );
 
     try {

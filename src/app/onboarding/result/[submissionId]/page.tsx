@@ -126,7 +126,7 @@ function OnboardingResultContent({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           submissionId,
-          generateRoadmapIfMissing: true,
+          generateRoadmapIfMissing: false,
         }),
       });
       const data = await res.json();
