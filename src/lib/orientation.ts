@@ -142,7 +142,44 @@ export function serializeOrientationArticle(
   return base;
 }
 
-export async function getActiveTaxonomyTree(): Promise<IOrientationCategoryDTO[]> {
+const TAXONOMY_CACHE_TTL_MS = 60_000;
+
+interface CachedTaxonomyState {
+  tree: IOrientationCategoryDTO[];
+  categoryBySlug: Map<string, { _id: string; name: string; slug: string }>;
+  categoryById: Map<string, { _id: string; name: string; slug: string }>;
+  topicBySlug: Map<
+    string,
+    { _id: string; categoryId: string; name: string; slug: string; isActive: boolean }
+  >;
+  topicById: Map<
+    string,
+    { _id: string; categoryId: string; name: string; slug: string; isActive: boolean }
+  >;
+  expiresAt: number;
+}
+
+let cachedTaxonomyState: CachedTaxonomyState | null = null;
+let articleIndexesSyncStarted = false;
+
+export function invalidateOrientationTaxonomyCache() {
+  cachedTaxonomyState = null;
+}
+
+export function ensureOrientationArticleIndexesInBackground() {
+  if (articleIndexesSyncStarted) return;
+  articleIndexesSyncStarted = true;
+  void OrientationArticle.syncIndexes().catch(() => {
+    articleIndexesSyncStarted = false;
+  });
+}
+
+export async function getCachedTaxonomyLookup(): Promise<CachedTaxonomyState> {
+  const now = Date.now();
+  if (cachedTaxonomyState && cachedTaxonomyState.expiresAt > now) {
+    return cachedTaxonomyState;
+  }
+
   await connectToDatabase();
 
   const [categories, topics] = await Promise.all([
@@ -154,13 +191,41 @@ export async function getActiveTaxonomyTree(): Promise<IOrientationCategoryDTO[]
       .lean(),
   ]);
 
+  const categoryBySlug = new Map<string, { _id: string; name: string; slug: string }>();
+  const categoryById = new Map<string, { _id: string; name: string; slug: string }>();
+  const topicBySlug = new Map<
+    string,
+    { _id: string; categoryId: string; name: string; slug: string; isActive: boolean }
+  >();
+  const topicById = new Map<
+    string,
+    { _id: string; categoryId: string; name: string; slug: string; isActive: boolean }
+  >();
   const topicsByCategory = new Map<string, IOrientationTopicDTO[]>();
 
+  for (const cat of categories) {
+    const catId = cat._id.toString();
+    const compact = { _id: catId, name: cat.name, slug: cat.slug };
+    categoryBySlug.set(cat.slug, compact);
+    categoryById.set(catId, compact);
+  }
+
   for (const topic of topics) {
+    const topicId = topic._id.toString();
     const catKey = topic.categoryId.toString();
+    const compactTopic = {
+      _id: topicId,
+      categoryId: catKey,
+      name: topic.name,
+      slug: topic.slug,
+      isActive: Boolean(topic.isActive),
+    };
+    topicBySlug.set(topic.slug, compactTopic);
+    topicById.set(topicId, compactTopic);
+
     const list = topicsByCategory.get(catKey) || [];
     list.push({
-      _id: topic._id.toString(),
+      _id: topicId,
       categoryId: catKey,
       name: topic.name,
       slug: topic.slug,
@@ -171,7 +236,7 @@ export async function getActiveTaxonomyTree(): Promise<IOrientationCategoryDTO[]
     topicsByCategory.set(catKey, list);
   }
 
-  return categories.map((cat) => {
+  const tree: IOrientationCategoryDTO[] = categories.map((cat) => {
     const catId = cat._id.toString();
     return {
       _id: catId,
@@ -184,6 +249,21 @@ export async function getActiveTaxonomyTree(): Promise<IOrientationCategoryDTO[]
       topics: topicsByCategory.get(catId) || [],
     };
   });
+
+  cachedTaxonomyState = {
+    tree,
+    categoryBySlug,
+    categoryById,
+    topicBySlug,
+    topicById,
+    expiresAt: now + TAXONOMY_CACHE_TTL_MS,
+  };
+  return cachedTaxonomyState;
+}
+
+export async function getActiveTaxonomyTree(): Promise<IOrientationCategoryDTO[]> {
+  const state = await getCachedTaxonomyLookup();
+  return state.tree;
 }
 
 export async function ensureUniqueArticleSlug(
@@ -207,6 +287,7 @@ export async function ensureUniqueArticleSlug(
 }
 
 export function revalidateOrientationRoutes(slugs: string[] = []) {
+  invalidateOrientationTaxonomyCache();
   try {
     revalidatePath("/explore");
     for (const slug of slugs) {

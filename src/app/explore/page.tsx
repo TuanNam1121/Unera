@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Compass,
@@ -19,6 +19,16 @@ import type {
   IOrientationCategoryDTO,
 } from "@/types";
 
+interface CachedExploreFeed {
+  articles: IOrientationArticleSummary[];
+  total: number;
+  totalPages: number;
+  expiresAt: number;
+}
+
+const CLIENT_FEED_CACHE_TTL_MS = 30_000;
+const SEARCH_DEBOUNCE_MS = 300;
+
 function ExploreFeedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,20 +40,49 @@ function ExploreFeedContent() {
   const sort = searchParams.get("sort") || "latest";
   const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
 
+  const requestKey = `${categorySlug}|${topicSlug}|${tagFilter}|${queryQ}|${sort}|${page}`;
+
   const [searchInput, setSearchInput] = useState(queryQ);
+  const [prevQueryQ, setPrevQueryQ] = useState(queryQ);
+  const [prevRequestKey, setPrevRequestKey] = useState(requestKey);
   const [taxonomy, setTaxonomy] = useState<IOrientationCategoryDTO[]>([]);
   const [articles, setArticles] = useState<IOrientationArticleSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  if (queryQ !== prevQueryQ) {
+    setPrevQueryQ(queryQ);
+    setSearchInput(queryQ);
+  }
+
+  if (requestKey !== prevRequestKey) {
+    setPrevRequestKey(requestKey);
+    setLoading(true);
+  }
+
+  const feedCacheRef = useRef<Map<string, CachedExploreFeed>>(new Map());
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | null>, resetPage = true) => {
+      const next = new URLSearchParams(searchParams.toString());
+      for (const [k, v] of Object.entries(updates)) {
+        if (!v) next.delete(k);
+        else next.set(k, v);
+      }
+      if (resetPage) next.delete("page");
+      const qs = next.toString();
+      router.replace(qs ? `/explore?${qs}` : "/explore", { scroll: false });
+    },
+    [router, searchParams]
+  );
+
   useEffect(() => {
     let cancelled = false;
     async function loadTaxonomy() {
       try {
-        const res = await fetch("/api/orientation/taxonomy", {
-          cache: "no-store",
-        });
+        const res = await fetch("/api/orientation/taxonomy");
         const data = await res.json();
         if (!cancelled && res.ok && Array.isArray(data.categories)) {
           setTaxonomy(data.categories);
@@ -58,59 +97,89 @@ function ExploreFeedContent() {
     };
   }, []);
 
+  // Debounced live search when user types into the search input
   useEffect(() => {
-    let cancelled = false;
+    const trimmed = searchInput.trim();
+    if (trimmed === queryQ) return;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      updateUrlParams({ q: trimmed || null });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchInput, queryQ, updateUrlParams]);
+
+  useEffect(() => {
+    const controller = new AbortController();
 
     async function loadArticles() {
-      try {
-        const params = new URLSearchParams();
-        if (categorySlug) params.set("category", categorySlug);
-        if (topicSlug) params.set("topic", topicSlug);
-        if (tagFilter) params.set("tag", tagFilter);
-        if (queryQ) params.set("q", queryQ);
-        if (sort) params.set("sort", sort);
-        params.set("page", String(page));
-        params.set("limit", "12");
+      const params = new URLSearchParams();
+      if (categorySlug) params.set("category", categorySlug);
+      if (topicSlug) params.set("topic", topicSlug);
+      if (tagFilter) params.set("tag", tagFilter);
+      if (queryQ) params.set("q", queryQ);
+      if (sort) params.set("sort", sort);
+      params.set("page", String(page));
+      params.set("limit", "12");
 
-        const res = await fetch(
-          `/api/orientation/articles?${params.toString()}`,
-          {
-            credentials: "include",
-            cache: "no-store",
-          }
-        );
-        const data = await res.json();
-        if (!cancelled && res.ok) {
-          setArticles(Array.isArray(data.articles) ? data.articles : []);
-          setTotal(data.pagination?.total || 0);
-          setTotalPages(data.pagination?.totalPages || 1);
+      const qs = params.toString();
+      const cached = feedCacheRef.current.get(qs);
+      if (cached && cached.expiresAt > Date.now()) {
+        await Promise.resolve();
+        if (!controller.signal.aborted) {
+          setArticles(cached.articles);
+          setTotal(cached.total);
+          setTotalPages(cached.totalPages);
+          setLoading(false);
         }
-      } catch {
-        // Keep UI safe
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/orientation/articles?${qs}`, {
+          credentials: "include",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (!controller.signal.aborted && res.ok) {
+          const nextArticles = Array.isArray(data.articles) ? data.articles : [];
+          const nextTotal = data.pagination?.total || 0;
+          const nextTotalPages = data.pagination?.totalPages || 1;
+          feedCacheRef.current.set(qs, {
+            articles: nextArticles,
+            total: nextTotal,
+            totalPages: nextTotalPages,
+            expiresAt: Date.now() + CLIENT_FEED_CACHE_TTL_MS,
+          });
+          setArticles(nextArticles);
+          setTotal(nextTotal);
+          setTotalPages(nextTotalPages);
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
 
-    loadArticles();
+    void loadArticles();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [categorySlug, topicSlug, tagFilter, queryQ, sort, page]);
-
-  const updateUrlParams = (
-    updates: Record<string, string | null>,
-    resetPage = true
-  ) => {
-    const next = new URLSearchParams(searchParams.toString());
-    for (const [k, v] of Object.entries(updates)) {
-      if (!v) next.delete(k);
-      else next.set(k, v);
-    }
-    if (resetPage) next.delete("page");
-    const qs = next.toString();
-    router.push(qs ? `/explore?${qs}` : "/explore");
-  };
 
   const activeCategory = useMemo(
     () => taxonomy.find((c) => c.slug === categorySlug) || null,
@@ -148,6 +217,7 @@ function ExploreFeedContent() {
       }
       const data = await res.json();
       if (res.ok) {
+        feedCacheRef.current.clear();
         setArticles((prev) =>
           prev.map((item) =>
             item.slug === slug
@@ -187,7 +257,14 @@ function ExploreFeedContent() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              updateUrlParams({ q: searchInput.trim() || null });
+              if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+              }
+              const trimmed = searchInput.trim() || null;
+              if ((trimmed || "") !== queryQ) {
+                setLoading(true);
+              }
+              updateUrlParams({ q: trimmed });
             }}
             className="flex flex-1 gap-2"
           >
@@ -197,14 +274,41 @@ function ExploreFeedContent() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm bài viết theo ngành học, học bổng, kỹ năng..."
-                className="h-11 border-0 bg-white pl-10 text-slate-900 placeholder:text-slate-400 shadow-sm"
+                className="h-11 border-0 bg-white pl-10 pr-9 text-slate-900 placeholder:text-slate-400 shadow-sm"
               />
+              {searchInput && (
+                <button
+                  type="button"
+                  aria-label="Xóa từ khóa"
+                  onClick={() => {
+                    if (debounceTimerRef.current) {
+                      clearTimeout(debounceTimerRef.current);
+                    }
+                    setSearchInput("");
+                    if (queryQ) {
+                      setLoading(true);
+                      updateUrlParams({ q: null });
+                    }
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
             <Button
               type="submit"
+              disabled={loading}
               className="h-11 bg-sky-500 px-5 font-semibold text-white hover:bg-sky-400"
             >
-              Tìm kiếm
+              {loading ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang tìm...
+                </span>
+              ) : (
+                "Tìm kiếm"
+              )}
             </Button>
           </form>
 
@@ -332,8 +436,13 @@ function ExploreFeedContent() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex h-60 items-center justify-center rounded-2xl border border-slate-200 bg-white">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+        <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-xs font-medium text-slate-500">
+            {queryQ
+              ? `Đang tìm kiếm bài viết cho “${queryQ}”...`
+              : "Đang tải danh sách bài viết định hướng..."}
+          </p>
         </div>
       ) : articles.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">

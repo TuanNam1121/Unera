@@ -1,13 +1,40 @@
+import { cookies } from "next/headers";
 import { NextResponse, connection } from "next/server";
-import { ORIENTATION_ARTICLE_STATUS } from "@/constants";
+import { Types } from "mongoose";
+import { AUTH_COOKIE_NAMES, ORIENTATION_ARTICLE_STATUS } from "@/constants";
 import { connectToDatabase } from "@/lib/db";
-import { serializeOrientationArticle } from "@/lib/orientation";
+import { verifyAccessToken } from "@/lib/jwt";
+import {
+  ensureOrientationArticleIndexesInBackground,
+  getCachedTaxonomyLookup,
+  serializeOrientationArticle,
+} from "@/lib/orientation";
 import { escapeRegexInput } from "@/lib/orientation-utils";
-import { getCurrentUser } from "@/lib/session";
 import { ArticleLike } from "@/models/ArticleLike";
 import { OrientationArticle } from "@/models/OrientationArticle";
-import { OrientationCategory } from "@/models/OrientationCategory";
-import { OrientationTopic } from "@/models/OrientationTopic";
+
+/**
+ * Extracts user ID directly from the JWT without hitting the User collection.
+ * Keeps public feed + search fast while still resolving liked state for logged-in users.
+ */
+async function getOptionalUserIdFromRequest(req: Request): Promise<string | null> {
+  try {
+    let token: string | null = null;
+    const authHeader = req.headers.get("authorization");
+    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+      token = authHeader.slice(7).trim() || null;
+    }
+    if (!token) {
+      const cookieStore = await cookies();
+      token = cookieStore.get(AUTH_COOKIE_NAMES.ACCESS_TOKEN)?.value || null;
+    }
+    if (!token) return null;
+    const payload = await verifyAccessToken(token);
+    return payload?.sub ? String(payload.sub) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * GET /api/orientation/articles
@@ -33,27 +60,19 @@ export async function GET(req: Request) {
         ? Math.min(parsedLimit, 30)
         : 12;
 
-    await connectToDatabase();
+    const [, taxonomyLookup, userId] = await Promise.all([
+      connectToDatabase(),
+      getCachedTaxonomyLookup(),
+      getOptionalUserIdFromRequest(req),
+    ]);
+    ensureOrientationArticleIndexesInBackground();
 
-    let currentUser = null;
-    try {
-      currentUser = await getCurrentUser(req);
-    } catch {
-      currentUser = null;
-    }
-
-    const filter: Record<string, unknown> = {
+    const baseFilter: Record<string, unknown> = {
       status: ORIENTATION_ARTICLE_STATUS.PUBLISHED,
     };
 
     if (categorySlug) {
-      const cat = await OrientationCategory.findOne({
-        slug: categorySlug,
-        isActive: true,
-      })
-        .select("_id")
-        .lean();
-
+      const cat = taxonomyLookup.categoryBySlug.get(categorySlug);
       if (!cat) {
         return NextResponse.json({
           success: true,
@@ -61,17 +80,11 @@ export async function GET(req: Request) {
           pagination: { page, limit, total: 0, totalPages: 1 },
         });
       }
-      filter.categoryId = cat._id;
+      baseFilter.categoryId = new Types.ObjectId(cat._id);
     }
 
     if (topicSlug) {
-      const topic = await OrientationTopic.findOne({
-        slug: topicSlug,
-        isActive: true,
-      })
-        .select("_id")
-        .lean();
-
+      const topic = taxonomyLookup.topicBySlug.get(topicSlug);
       if (!topic) {
         return NextResponse.json({
           success: true,
@@ -79,29 +92,18 @@ export async function GET(req: Request) {
           pagination: { page, limit, total: 0, totalPages: 1 },
         });
       }
-      filter.topicIds = topic._id;
+      baseFilter.topicIds = new Types.ObjectId(topic._id);
     }
 
     if (featured === "true") {
-      filter.isFeatured = true;
+      baseFilter.isFeatured = true;
     }
 
     if (tag) {
-      filter.tags = new RegExp(`^${escapeRegexInput(tag)}$`, "i");
+      baseFilter.tags = new RegExp(`^${escapeRegexInput(tag)}$`, "i");
     }
 
-    if (q) {
-      const safeRegex = new RegExp(escapeRegexInput(q), "i");
-      filter.$or = [
-        { title: safeRegex },
-        { summary: safeRegex },
-        { contentText: safeRegex },
-        { tags: safeRegex },
-        { authorName: safeRegex },
-      ];
-    }
-
-    const sortQuery: Record<string, 1 | -1> =
+    const baseSort: Record<string, 1 | -1> =
       sort === "popular"
         ? { viewCount: -1, publishedAt: -1 }
         : sort === "most_liked"
@@ -110,23 +112,117 @@ export async function GET(req: Request) {
 
     const skip = (page - 1) * limit;
 
-    const [docs, total] = await Promise.all([
-      OrientationArticle.find(filter)
-        .select("-contentJson -contentText")
-        .sort(sortQuery)
+    type ArticleDocRow = {
+      _id: Types.ObjectId;
+      title: string;
+      slug: string;
+      summary: string;
+      coverImage?: string;
+      categoryId: Types.ObjectId | { _id: string; name: string; slug: string } | null;
+      topicIds: (
+        | Types.ObjectId
+        | { _id: string; name: string; slug: string; isActive?: boolean }
+      )[];
+      tags?: string[];
+      status: "DRAFT" | "PUBLISHED" | "UNPUBLISHED";
+      isFeatured: boolean;
+      authorName: string;
+      readTimeMinutes: number;
+      viewCount: number;
+      likeCount: number;
+      commentCount: number;
+      publishedAt?: Date | null;
+      createdAt?: Date;
+    };
+
+    const ARTICLE_PROJECTION =
+      "_id title slug summary coverImage categoryId topicIds tags status isFeatured authorName readTimeMinutes viewCount likeCount commentCount publishedAt createdAt";
+
+    let docs: ArticleDocRow[] = [];
+    let total = 0;
+
+    if (q) {
+      let textSearchSucceeded = false;
+
+      if (q.length >= 2) {
+        try {
+          const textFilter = { ...baseFilter, $text: { $search: q } };
+          const textDocs = (await OrientationArticle.find(textFilter, {
+            ...(sort === "latest" ? { score: { $meta: "textScore" } } : {}),
+          })
+            .select(ARTICLE_PROJECTION)
+            .sort(
+              sort === "latest"
+                ? ({ score: { $meta: "textScore" }, isFeatured: -1, publishedAt: -1 } as Record<
+                    string,
+                    1 | -1 | { $meta: "textScore" }
+                  >)
+                : baseSort
+            )
+            .skip(skip)
+            .limit(limit)
+            .lean()) as unknown as ArticleDocRow[];
+
+          if (textDocs.length > 0 || page > 1) {
+            docs = textDocs;
+            total =
+              page === 1 && textDocs.length < limit
+                ? textDocs.length
+                : await OrientationArticle.countDocuments(textFilter);
+            textSearchSucceeded = true;
+          }
+        } catch {
+          // Index may still be building on fresh deployments; fall back cleanly.
+          textSearchSucceeded = false;
+        }
+      }
+
+      if (!textSearchSucceeded) {
+        // Lightweight metadata regex fallback for partial prefixes/short queries without scanning full contentText.
+        const safeRegex = new RegExp(escapeRegexInput(q), "i");
+        const fallbackFilter = {
+          ...baseFilter,
+          $or: [
+            { title: safeRegex },
+            { summary: safeRegex },
+            { tags: safeRegex },
+            { authorName: safeRegex },
+          ],
+        };
+
+        const fallbackDocs = (await OrientationArticle.find(fallbackFilter)
+          .select(ARTICLE_PROJECTION)
+          .sort(baseSort)
+          .skip(skip)
+          .limit(limit)
+          .lean()) as unknown as ArticleDocRow[];
+
+        docs = fallbackDocs;
+        total =
+          page === 1 && fallbackDocs.length < limit
+            ? fallbackDocs.length
+            : await OrientationArticle.countDocuments(fallbackFilter);
+      }
+    } else {
+      const feedDocs = (await OrientationArticle.find(baseFilter)
+        .select(ARTICLE_PROJECTION)
+        .sort(baseSort)
         .skip(skip)
         .limit(limit)
-        .populate("categoryId", "name slug")
-        .populate("topicIds", "name slug isActive")
-        .lean(),
-      OrientationArticle.countDocuments(filter),
-    ]);
+        .lean()) as unknown as ArticleDocRow[];
+
+      docs = feedDocs;
+      total =
+        page === 1 && feedDocs.length < limit
+          ? feedDocs.length
+          : await OrientationArticle.countDocuments(baseFilter);
+    }
 
     const likedIds = new Set<string>();
-    if (currentUser && docs.length > 0) {
+    if (userId && docs.length > 0) {
       const articleIds = docs.map((d) => d._id);
       const likes = await ArticleLike.find({
-        userId: currentUser.id,
+        userId,
         articleId: { $in: articleIds },
       })
         .select("articleId")
@@ -136,9 +232,35 @@ export async function GET(req: Request) {
       }
     }
 
+    const hydratedDocs = docs.map((doc) => {
+      const catIdStr = doc.categoryId ? String(doc.categoryId) : "";
+      const resolvedCategory = taxonomyLookup.categoryById.get(catIdStr) || null;
+      const resolvedTopics = Array.isArray(doc.topicIds)
+        ? doc.topicIds
+            .map((tid) => taxonomyLookup.topicById.get(String(tid)))
+            .filter(
+              (
+                t
+              ): t is {
+                _id: string;
+                categoryId: string;
+                name: string;
+                slug: string;
+                isActive: boolean;
+              } => Boolean(t)
+            )
+        : [];
+
+      return {
+        ...doc,
+        categoryId: resolvedCategory,
+        topicIds: resolvedTopics,
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      articles: docs.map((doc) =>
+      articles: hydratedDocs.map((doc) =>
         serializeOrientationArticle(doc, {
           likedIds,
           onlyActiveTopics: true,
@@ -159,4 +281,3 @@ export async function GET(req: Request) {
     );
   }
 }
-

@@ -89,6 +89,28 @@ const OrientationArticleSchema = new Schema<IOrientationArticleDocument>(
 
 OrientationArticleSchema.index({ status: 1, isFeatured: -1, publishedAt: -1 });
 OrientationArticleSchema.index({ status: 1, categoryId: 1, publishedAt: -1 });
+OrientationArticleSchema.index({ status: 1, viewCount: -1, publishedAt: -1 });
+OrientationArticleSchema.index({ status: 1, likeCount: -1, publishedAt: -1 });
+OrientationArticleSchema.index(
+  {
+    title: "text",
+    summary: "text",
+    tags: "text",
+    authorName: "text",
+    contentText: "text",
+  },
+  {
+    weights: {
+      title: 10,
+      tags: 6,
+      summary: 4,
+      authorName: 3,
+      contentText: 1,
+    },
+    default_language: "none",
+    name: "orientation_article_text_search",
+  }
+);
 
 export const OrientationArticle: Model<IOrientationArticleDocument> =
   mongoose.models.OrientationArticle ||
