@@ -69,11 +69,24 @@ export async function PUT(req: Request) {
     const studentObjId = new Types.ObjectId(authUser.id);
     const now = new Date();
 
-    let draft = await AssessmentSubmission.findOne({
-      studentId: studentObjId,
-      questionnaireId: activeQuestionnaire._id,
-      status: ASSESSMENT_SUBMISSION_STATUS.IN_PROGRESS,
-    });
+    let draft = await AssessmentSubmission.findOneAndUpdate(
+      {
+        studentId: studentObjId,
+        questionnaireId: activeQuestionnaire._id,
+        status: ASSESSMENT_SUBMISSION_STATUS.IN_PROGRESS,
+      },
+      {
+        $set: {
+          answers: snapshotAnswers,
+          currentStepIndex: parsed.data.currentStepIndex,
+          lastSavedAt: now,
+        },
+      },
+      {
+        sort: { updatedAt: -1 },
+        returnDocument: "after",
+      }
+    );
 
     if (!draft) {
       const latestSubmitted = await AssessmentSubmission.findOne({
@@ -92,11 +105,6 @@ export async function PUT(req: Request) {
         currentStepIndex: parsed.data.currentStepIndex,
         lastSavedAt: now,
       });
-    } else {
-      draft.answers = snapshotAnswers;
-      draft.currentStepIndex = parsed.data.currentStepIndex;
-      draft.lastSavedAt = now;
-      await draft.save();
     }
 
     return NextResponse.json({

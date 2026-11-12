@@ -61,6 +61,7 @@ function OnboardingAssessmentContent() {
 
   const hasHydratedRef = useRef(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -118,6 +119,7 @@ function OnboardingAssessmentContent() {
     return () => {
       active = false;
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      draftAbortRef.current?.abort();
     };
   }, []);
 
@@ -134,18 +136,23 @@ function OnboardingAssessmentContent() {
   const persistDraft = useCallback(
     async (nextAnswers: AssessmentAnswersMap, nextStep: number) => {
       if (!questionnaire?._id) return;
+      draftAbortRef.current?.abort();
+      const controller = new AbortController();
+      draftAbortRef.current = controller;
+
       setSavingDraft(true);
       try {
         const res = await fetchWithAuth("/api/assessments/draft", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             questionnaireId: questionnaire._id,
             answers: nextAnswers,
             currentStepIndex: nextStep,
           }),
         });
-        if (res.ok) {
+        if (!controller.signal.aborted && res.ok) {
           const data = await res.json();
           const savedAt = data.savedAt ? new Date(data.savedAt) : new Date();
           setLastSavedText(
@@ -153,9 +160,12 @@ function OnboardingAssessmentContent() {
           );
         }
       } catch {
-        // Silent background save error
+        // Silent background save / abort error
       } finally {
-        setSavingDraft(false);
+        if (draftAbortRef.current === controller) {
+          draftAbortRef.current = null;
+          setSavingDraft(false);
+        }
       }
     },
     [questionnaire]
@@ -249,6 +259,7 @@ function OnboardingAssessmentContent() {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
+    draftAbortRef.current?.abort();
 
     setSubmitting(true);
     setSubmitStage(

@@ -22,6 +22,8 @@ import { Questionnaire } from "@/models/Questionnaire";
 import { User } from "@/models/User";
 import { assessmentSubmitSchema } from "@/validations/assessment";
 
+export const maxDuration = 60;
+
 /**
  * POST /api/assessments/submit
  * PA09: Validate conditional + required -> lưu SUBMITTED -> cập nhật onboardingStep
@@ -106,20 +108,30 @@ export async function POST(req: Request) {
 
     const studentObjId = new Types.ObjectId(authUser.id);
     const now = new Date();
+    const lastStepIndex = Math.max(0, validation.visibleQuestions.length - 1);
 
-    let submission = await AssessmentSubmission.findOne({
-      studentId: studentObjId,
-      questionnaireId: questionnaire._id,
-      status: ASSESSMENT_SUBMISSION_STATUS.IN_PROGRESS,
-    }).sort({ updatedAt: -1 });
+    let submission = await AssessmentSubmission.findOneAndUpdate(
+      {
+        studentId: studentObjId,
+        questionnaireId: questionnaire._id,
+        status: ASSESSMENT_SUBMISSION_STATUS.IN_PROGRESS,
+      },
+      {
+        $set: {
+          status: ASSESSMENT_SUBMISSION_STATUS.SUBMITTED,
+          answers: snapshotAnswers,
+          currentStepIndex: lastStepIndex,
+          submittedAt: now,
+          lastSavedAt: now,
+        },
+      },
+      {
+        sort: { updatedAt: -1 },
+        returnDocument: "after",
+      }
+    );
 
-    if (submission) {
-      submission.status = ASSESSMENT_SUBMISSION_STATUS.SUBMITTED;
-      submission.answers = snapshotAnswers;
-      submission.submittedAt = now;
-      submission.lastSavedAt = now;
-      await submission.save();
-    } else {
+    if (!submission) {
       const latestSubmission = await AssessmentSubmission.findOne({
         studentId: studentObjId,
       })
@@ -133,7 +145,7 @@ export async function POST(req: Request) {
         status: ASSESSMENT_SUBMISSION_STATUS.SUBMITTED,
         attemptNumber: (latestSubmission?.attemptNumber ?? 0) + 1,
         answers: snapshotAnswers,
-        currentStepIndex: Math.max(0, validation.visibleQuestions.length - 1),
+        currentStepIndex: lastStepIndex,
         lastSavedAt: now,
         submittedAt: now,
       });
@@ -144,8 +156,11 @@ export async function POST(req: Request) {
     let refreshedToken: string | null = null;
     if (dbUser) {
       if (dbUser.onboardingStep !== ONBOARDING_STEPS.COMPLETED) {
+        await User.updateOne(
+          { _id: dbUser._id },
+          { $set: { onboardingStep: ONBOARDING_STEPS.COMPLETED } }
+        );
         dbUser.onboardingStep = ONBOARDING_STEPS.COMPLETED;
-        await dbUser.save();
       }
       refreshedToken = await signAccessTokenForUser(dbUser);
     }
