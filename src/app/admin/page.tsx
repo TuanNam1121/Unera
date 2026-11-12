@@ -7,25 +7,28 @@ import {
   Briefcase,
   CalendarCheck,
   Compass,
+  Newspaper,
   ArrowRight,
   ShieldCheck,
   Lock,
-  Unlock,
   Plus,
   Loader2,
   Clock,
   CheckCircle2,
-  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 interface DashboardStats {
+  totalUsers?: number;
+  totalAdmins?: number;
   totalStudents: number;
   activeStudents: number;
   disabledStudents: number;
-  totalOpportunities: number;
-  openOpportunities: number;
+  totalActivities: number;
+  publishedActivities: number;
+  totalActivityFollowers: number;
+  totalNews?: number;
+  publishedNews?: number;
   pendingBookings: number;
   totalActiveRoadmaps: number;
 }
@@ -112,17 +115,31 @@ export default function AdminDashboardPage() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-300">
-            Giám sát vận hành hệ thống UNERA, phê duyệt cơ hội và kết nối sinh viên theo thời gian thực.
+            Giám sát vận hành hệ thống UNERA, quản lý hoạt động sinh viên và kết nối cố vấn theo thời gian thực.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
           <Link
-            href="/admin/opportunities/new"
+            href="/admin/activities/new"
             className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 text-xs font-semibold shadow-xs transition-all"
           >
             <Plus className="h-4 w-4" />
-            <span>Đăng cơ hội mới</span>
+            <span>Tạo hoạt động mới</span>
+          </Link>
+          <Link
+            href="/admin/news/new"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 text-xs font-semibold shadow-xs transition-all"
+          >
+            <Newspaper className="h-4 w-4" />
+            <span>Viết tin tức mới</span>
+          </Link>
+          <Link
+            href="/admin/explore"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white px-3.5 py-2 text-xs font-semibold border border-white/20 backdrop-blur-xs transition-all shadow-xs"
+          >
+            <Compass className="h-4 w-4 text-emerald-400" />
+            <span>Bài viết định hướng</span>
           </Link>
           <Link
             href="/admin/bookings"
@@ -135,7 +152,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Total Students */}
         <Card className="rounded-2xl border-slate-200/80 shadow-xs hover:shadow-sm transition-all bg-white">
           <CardContent className="p-5 flex items-center justify-between">
@@ -155,6 +172,11 @@ export default function AdminDashboardPage() {
                     <Lock className="h-3 w-3" /> {stats.disabledStudents} bị khóa
                   </span>
                 ) : null}
+                {typeof stats?.totalAdmins === "number" ? (
+                  <span className="text-indigo-600 font-semibold">
+                    · {stats.totalAdmins} Admin
+                  </span>
+                ) : null}
               </div>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
@@ -163,18 +185,18 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Open Opportunities */}
+        {/* Published Student Activities */}
         <Card className="rounded-2xl border-slate-200/80 shadow-xs hover:shadow-sm transition-all bg-white">
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Cơ hội đang mở
+                Hoạt động đang hiển thị
               </p>
               <p className="text-2xl font-bold text-slate-900">
-                {stats?.openOpportunities || 0}
+                {stats?.publishedActivities || 0}
               </p>
               <p className="text-[11px] text-slate-400">
-                Tổng cộng {stats?.totalOpportunities || 0} cơ hội trong kho
+                Tổng {stats?.totalActivities || 0} hoạt động · {stats?.totalActivityFollowers || 0} lượt quan tâm
               </p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
@@ -222,6 +244,28 @@ export default function AdminDashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Published News */}
+        <Link href="/admin/news" className="block">
+          <Card className="rounded-2xl border-slate-200/80 shadow-xs hover:shadow-sm transition-all bg-white h-full">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Tin tức đã xuất bản
+                </p>
+                <p className="text-2xl font-bold text-sky-600">
+                  {stats?.publishedNews || 0}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Tổng {stats?.totalNews || 0} bài viết tin tức
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
+                <Newspaper className="h-6 w-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Two Column Layout: Recent Registrations & Live Audit Trail */}
@@ -238,7 +282,7 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </div>
             <Link
-              href="/admin/students"
+              href="/admin/users"
               className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
               <span>Xem tất cả</span>

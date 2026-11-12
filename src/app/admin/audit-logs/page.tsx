@@ -88,6 +88,10 @@ function AdminAuditLogsContent() {
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">KHÓA TÀI KHOẢN</span>;
       case "UNLOCK_ACCOUNT":
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">MỞ KHÓA</span>;
+      case "ROLE_CHANGE":
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">ĐỔI VAI TRÒ</span>;
+      case "DELETE":
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">XÓA VĨNH VIỄN</span>;
       default:
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">{action}</span>;
     }
@@ -109,7 +113,7 @@ function AdminAuditLogsContent() {
 
         {/* Action Filters */}
         <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 overflow-x-auto">
-          {["ALL", "STATUS_CHANGE", "LOCK_ACCOUNT", "UNLOCK_ACCOUNT", "UPDATE", "CREATE"].map((act) => (
+          {["ALL", "ROLE_CHANGE", "DELETE", "STATUS_CHANGE", "LOCK_ACCOUNT", "UNLOCK_ACCOUNT", "UPDATE", "CREATE"].map((act) => (
             <button
               key={act}
               onClick={() => {
@@ -122,6 +126,10 @@ function AdminAuditLogsContent() {
             >
               {act === "ALL"
                 ? "Tất cả"
+                : act === "ROLE_CHANGE"
+                ? "Đổi vai trò"
+                : act === "DELETE"
+                ? "Xóa"
                 : act === "STATUS_CHANGE"
                 ? "Đổi trạng thái"
                 : act === "LOCK_ACCOUNT"

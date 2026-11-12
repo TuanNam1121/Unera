@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getDevErrorDetails } from "@/lib/api-error";
 import { connectToDatabase } from "@/lib/db";
 
 export async function GET() {
@@ -11,14 +12,11 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       service: "UNERA Web Platform",
       version: "1.0.0",
-      environment: process.env.NODE_ENV || "development",
       database: {
         connected: isDbConnected,
-        readyState: mongoose.connection.readyState,
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {
         status: "degraded",
@@ -26,7 +24,7 @@ export async function GET() {
         service: "UNERA Web Platform",
         database: {
           connected: false,
-          error: message,
+          ...getDevErrorDetails(error),
         },
       },
       { status: 500 }

@@ -1,33 +1,33 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Document, Model, Schema, Types } from "mongoose";
+import { NEWS_ARTICLE_STATUS, type NewsArticleStatus } from "@/constants";
+import type { TiptapJSONDoc } from "@/types";
 
 export interface INewsArticleDocument extends Document {
   title: string;
   slug: string;
   summary: string;
-  content: string;
+  contentJson: TiptapJSONDoc;
+  contentText: string;
   coverImage?: string;
+  categoryId: Types.ObjectId;
   category: string;
-  author: string;
-  readTime: string;
-  source?: {
-    name: string;
-    url?: string;
-  };
-  attachments?: Array<{
-    name: string;
-    fileUrl: string;
-    fileSize: number;
-  }>;
+  tags: string[];
+  authorName: string;
+  readTimeMinutes: number;
+  status: NewsArticleStatus;
+  scheduledAt?: Date | null;
+  publishedAt?: Date | null;
   isFeatured: boolean;
   isSponsored: boolean;
-  sponsorInfo?: {
-    sponsorName: string;
-    sponsorLogoUrl?: string;
-    targetUrl?: string;
-  };
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
-  publishedAt?: Date;
-  createdByAdminId?: string;
+  sponsorInfo?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  viewCount: number;
+  bookmarkCount: number;
+  shareCount: number;
+  version: number;
+  createdBy?: Types.ObjectId;
+  updatedByAdminId?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,49 +35,64 @@ export interface INewsArticleDocument extends Document {
 const NewsArticleSchema = new Schema<INewsArticleDocument>(
   {
     title: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, trim: true, index: true },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     summary: { type: String, required: true, trim: true },
-    content: { type: String, required: true },
-    coverImage: { type: String, default: "" },
+    contentJson: { type: Schema.Types.Mixed, required: true },
+    contentText: { type: String, default: "" },
+    coverImage: { type: String, trim: true },
+    categoryId: {
+      type: Schema.Types.ObjectId,
+      ref: "NewsCategory",
+      required: true,
+      index: true,
+    },
     category: {
       type: String,
       required: true,
+      lowercase: true,
+      trim: true,
       index: true,
-      default: "ORIENTATION",
     },
-    author: { type: String, default: "Ban biên tập Polaris" },
-    readTime: { type: String, default: "5 phút đọc" },
-    source: {
-      name: { type: String, default: "Polaris Editorial" },
-      url: { type: String, default: "" },
+    tags: [{ type: String, trim: true }],
+    authorName: {
+      type: String,
+      default: "Ban biên tập Unera",
+      trim: true,
     },
-    attachments: [
-      {
-        name: { type: String, required: true },
-        fileUrl: { type: String, required: true },
-        fileSize: { type: Number, default: 0 },
-      },
-    ],
-    isFeatured: { type: Boolean, default: false, index: true },
-    isSponsored: { type: Boolean, default: false, index: true },
-    sponsorInfo: {
-      sponsorName: { type: String, default: "" },
-      sponsorLogoUrl: { type: String, default: "" },
-      targetUrl: { type: String, default: "" },
-    },
+    readTimeMinutes: { type: Number, default: 3, min: 1 },
     status: {
       type: String,
-      enum: ["DRAFT", "PUBLISHED", "ARCHIVED"],
-      default: "PUBLISHED",
+      enum: Object.values(NEWS_ARTICLE_STATUS),
+      default: NEWS_ARTICLE_STATUS.DRAFT,
       index: true,
     },
-    publishedAt: { type: Date, default: Date.now },
-    createdByAdminId: { type: String },
+    scheduledAt: { type: Date, default: null, index: true },
+    publishedAt: { type: Date, default: null, index: true },
+    isFeatured: { type: Boolean, default: false, index: true },
+    isSponsored: { type: Boolean, default: false },
+    sponsorInfo: { type: String, trim: true },
+    sourceName: { type: String, trim: true },
+    sourceUrl: { type: String, trim: true },
+    viewCount: { type: Number, default: 0, min: 0 },
+    bookmarkCount: { type: Number, default: 0, min: 0 },
+    shareCount: { type: Number, default: 0, min: 0 },
+    version: { type: Number, default: 1, min: 1 },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    updatedByAdminId: { type: Schema.Types.ObjectId, ref: "User" },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true, collection: "news_articles" }
 );
+
+NewsArticleSchema.index({ tags: 1 });
+NewsArticleSchema.index({ status: 1, publishedAt: -1 });
+NewsArticleSchema.index({ status: 1, scheduledAt: 1 });
+NewsArticleSchema.index({ category: 1, status: 1, publishedAt: -1 });
 
 export const NewsArticle: Model<INewsArticleDocument> =
   mongoose.models.NewsArticle ||

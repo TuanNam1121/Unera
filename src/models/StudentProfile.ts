@@ -19,6 +19,7 @@ const StudentProfileSchema = new Schema<IStudentProfileDocument>(
   {
     userId: { type: String, required: true, unique: true, index: true },
     fullName: { type: String, required: true, trim: true },
+    birthYear: { type: Number, min: 1960, max: 2015 },
     avatar: { type: String },
     university: { type: String, trim: true },
     major: { type: String, trim: true },
@@ -29,6 +30,8 @@ const StudentProfileSchema = new Schema<IStudentProfileDocument>(
       default: () => ({}),
     },
     skills: { type: [String], default: [] },
+    hardSkills: { type: [String], default: [] },
+    softSkills: { type: [String], default: [] },
     achievements: { type: [String], default: [] },
   },
   {

@@ -14,38 +14,43 @@ export function Footer() {
               <span className="text-lg font-bold text-gray-900">UNERA</span>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Nền tảng định hướng học tập, kết nối cơ hội và quản lý lộ trình phát triển sự nghiệp toàn diện dành riêng cho sinh viên đại học.
+              Nền tảng định hướng học tập, khám phá hoạt động sinh viên và quản lý lộ trình phát triển sự nghiệp toàn diện dành riêng cho sinh viên đại học.
             </p>
           </div>
 
           <div>
             <h4 className="font-semibold text-gray-900 mb-3 text-xs uppercase tracking-wider">
-              Khám phá cơ hội
+              Khám phá &amp; Hoạt động
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/explore?cat=study_abroad" className="hover:text-indigo-600">
-                  Học bổng & Du học
+                <Link href="/explore" className="hover:text-indigo-600">
+                  Khám phá định hướng
                 </Link>
               </li>
               <li>
-                <Link href="/explore?cat=multinational" className="hover:text-indigo-600">
-                  Tập đoàn đa quốc gia (MNC)
+                <Link href="/activities" className="hover:text-indigo-600">
+                  Tất cả hoạt động sinh viên
                 </Link>
               </li>
               <li>
-                <Link href="/explore?cat=management_trainee" className="hover:text-indigo-600">
-                  Quản trị viên tập sự (MT)
+                <Link href="/news" className="hover:text-indigo-600">
+                  Tin tức &amp; Sự kiện ULIS
                 </Link>
               </li>
               <li>
-                <Link href="/explore?cat=scientific_research" className="hover:text-indigo-600">
-                  Nghiên cứu khoa học
+                <Link href="/news/saved" className="hover:text-indigo-600">
+                  Tin tức đã lưu
                 </Link>
               </li>
               <li>
-                <Link href="/explore?cat=competitions" className="hover:text-indigo-600">
-                  Cuộc thi học thuật & kỹ năng
+                <Link href="/activities?tab=followed" className="hover:text-indigo-600">
+                  Hoạt động đã quan tâm
+                </Link>
+              </li>
+              <li>
+                <Link href="/onboarding" className="hover:text-indigo-600">
+                  Trắc nghiệm định hướng
                 </Link>
               </li>
             </ul>
@@ -53,7 +58,7 @@ export function Footer() {
 
           <div>
             <h4 className="font-semibold text-gray-900 mb-3 text-xs uppercase tracking-wider">
-              Công cụ & Hỗ trợ
+              Công cụ &amp; Hỗ trợ
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
@@ -67,8 +72,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/calendar" className="hover:text-indigo-600">
-                  Lịch theo dõi hạn chót
+                <Link href="/notifications" className="hover:text-indigo-600">
+                  Nhắc lịch &amp; Thông báo
                 </Link>
               </li>
               <li>

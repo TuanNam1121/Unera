@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 export interface IAuditLogDocument extends Document {
-  adminId: Types.ObjectId;
+  adminId?: Types.ObjectId | null;
   adminEmail: string;
   adminName: string;
   action:
@@ -11,13 +11,14 @@ export interface IAuditLogDocument extends Document {
     | "STATUS_CHANGE"
     | "LOCK_ACCOUNT"
     | "UNLOCK_ACCOUNT"
+    | "ROLE_CHANGE"
     | "RESOLVE_CONFLICT";
   targetCollection: string;
   targetId: Types.ObjectId;
   targetTitle?: string;
   targetVersion?: number;
-  changesBefore?: Record<string, any>;
-  changesAfter?: Record<string, any>;
+  changesBefore?: Record<string, unknown>;
+  changesAfter?: Record<string, unknown>;
   reason?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -26,7 +27,13 @@ export interface IAuditLogDocument extends Document {
 
 const AuditLogSchema = new Schema<IAuditLogDocument>(
   {
-    adminId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+      default: null,
+      index: true,
+    },
     adminEmail: { type: String, required: true },
     adminName: { type: String, required: true },
     action: {
@@ -38,6 +45,7 @@ const AuditLogSchema = new Schema<IAuditLogDocument>(
         "STATUS_CHANGE",
         "LOCK_ACCOUNT",
         "UNLOCK_ACCOUNT",
+        "ROLE_CHANGE",
         "RESOLVE_CONFLICT",
       ],
       required: true,

@@ -3,10 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { NotificationBellDropdown } from "@/components/notifications/NotificationBellDropdown";
 import {
-  Search,
-  Bell,
   User,
   LogOut,
   ShieldCheck,
@@ -17,8 +16,11 @@ import {
 
 export function Topbar() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { user, loading, logout } = useAuth();
+  const [openPathname, setOpenPathname] = useState<string | null>(null);
+  const dropdownOpen = openPathname === pathname;
+  const setDropdownOpen = (nextOpen: boolean) =>
+    setOpenPathname(nextOpen ? pathname : null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -28,43 +30,73 @@ export function Topbar() {
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        setDropdownOpen(false);
+        setOpenPathname(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close dropdown on route change
-  useEffect(() => {
-    setDropdownOpen(false);
-  }, [pathname]);
-
   // Dynamic Title based on current route
   const getPageTitle = () => {
     if (pathname === "/") return "Trang chủ";
-    if (pathname.startsWith("/news")) return "Tin tức & bài viết";
-    if (pathname.startsWith("/explore")) return "Khám phá cơ hội";
+    if (pathname.startsWith("/explore")) return "Khám phá định hướng";
+    if (pathname.startsWith("/activities")) return "Hoạt động sinh viên";
+    if (pathname.startsWith("/news/saved")) return "Tin tức đã lưu";
+    if (pathname.startsWith("/news/history")) return "Lịch sử đọc tin tức";
+    if (pathname.startsWith("/news")) return "Tin tức & Cơ hội";
     if (pathname.startsWith("/roadmap")) return "Lộ trình cá nhân";
-    if (pathname.startsWith("/calendar")) return "Lịch hạn chót";
-    if (pathname.startsWith("/applications")) return "Hồ sơ ứng tuyển";
     if (pathname.startsWith("/mentors")) return "Kết nối Mentor";
+    if (pathname.startsWith("/tools/cv-builder/templates")) return "Thư viện Mẫu CV";
+    if (pathname.startsWith("/tools/cv-builder")) return "CV chuẩn ATS";
+    if (pathname.startsWith("/tools/mbti")) return "Trắc nghiệm MBTI";
+    if (pathname.startsWith("/tools/mi")) return "Trắc nghiệm Đa trí thông minh (MI)";
+    if (pathname.startsWith("/tools/gross-net")) return "Tính lương Gross ↔ Net";
+    if (pathname.startsWith("/tools/tax")) return "Tính Thuế Thu nhập Cá nhân";
     if (pathname.startsWith("/tools")) return "Công cụ sinh viên";
     if (pathname.startsWith("/profile")) return "Hồ sơ cá nhân";
+    if (pathname.startsWith("/notifications/settings")) return "Cài đặt nhắc nhở";
     if (pathname.startsWith("/notifications")) return "Thông báo";
+    if (pathname.startsWith("/admin/media")) return "Thư viện Media CMS";
+    if (pathname.startsWith("/admin/explore")) return "Quản trị Khám phá định hướng";
+    if (pathname.startsWith("/admin/news/categories")) {
+      return "Chuyên mục Tin tức";
+    }
+    if (pathname.startsWith("/admin/news/tags")) {
+      return "Quản lý Thẻ (Tags) Tin tức";
+    }
+    if (pathname.startsWith("/admin/news/analytics")) {
+      return "Thống kê Tin tức";
+    }
+    if (pathname.startsWith("/admin/news")) {
+      return "Quản trị Tin tức";
+    }
+    if (pathname.startsWith("/admin/activities/statistics")) {
+      return "Thống kê Hoạt động sinh viên";
+    }
+    if (pathname.startsWith("/admin/activities/categories")) {
+      return "Danh mục Hoạt động sinh viên";
+    }
+    if (pathname.startsWith("/admin/activities")) {
+      return "Quản trị Hoạt động sinh viên";
+    }
     if (pathname.startsWith("/admin")) return "Bảng điều khiển Quản trị";
     if (pathname.startsWith("/login")) return "Đăng nhập";
+    if (pathname === "/register/complete-profile") return "Hoàn thiện hồ sơ";
     if (pathname.startsWith("/register")) return "Đăng ký tài khoản";
     if (pathname.startsWith("/forgot-password")) return "Khôi phục mật khẩu";
     if (pathname.startsWith("/reset-password")) return "Đặt lại mật khẩu";
     return "Unera";
   };
 
-  const user = session?.user;
-  const isAdmin = (user as unknown as { role?: string })?.role === "ADMIN";
+  const isAdmin = user?.role === "ADMIN";
+
+  if (pathname.startsWith("/cv/")) {
+    return null;
+  }
 
   return (
-    <header className="sticky top-0 z-30 flex h-[60px] w-full items-center justify-between border-b border-slate-200/80 bg-white px-6 sm:px-8">
+    <header className="sticky top-0 z-30 flex h-[60px] w-full items-center justify-between border-b border-slate-200/80 bg-white px-6 sm:px-8 print:hidden">
       {/* Left: Page Title */}
       <div className="flex items-center gap-4">
         <h1 className="text-base font-semibold text-slate-800">
@@ -72,33 +104,13 @@ export function Topbar() {
         </h1>
       </div>
 
-      {/* Right: Search + Notifications + User Auth / Profile Pill */}
+      {/* Right: Notifications + User Auth / Profile Pill */}
       <div className="flex items-center gap-3">
-        {/* Search Input with ⌘ K shortcut */}
-        <div className="relative hidden sm:block w-72 lg:w-80">
-          <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Tìm cơ hội, mentor, bài viết..."
-            className="w-full rounded-full border border-slate-200 bg-slate-50/70 py-1.5 pl-9 pr-12 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
-          />
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 shadow-2xs">
-            ⌘ K
-          </kbd>
-        </div>
-
-        {/* Notifications Icon Button */}
-        <Link
-          href="/notifications"
-          className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 transition-colors"
-          title="Thông báo"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
-        </Link>
+        {/* Notifications Bell Dropdown (OP11) */}
+        <NotificationBellDropdown isAuthenticated={Boolean(user)} />
 
         {/* User Auth Section */}
-        {status === "loading" ? (
+        {loading ? (
           <div className="h-8 w-20 animate-pulse rounded-full bg-slate-100" />
         ) : user ? (
           /* Profile Pill Dropdown */
@@ -168,7 +180,7 @@ export function Topbar() {
 
                 {/* Sign Out Button (FR-AUTH-04, FR-AUTH-10) */}
                 <button
-                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  onClick={() => logout("/login")}
                   className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
                 >
                   <LogOut className="h-3.5 w-3.5 text-red-500" />

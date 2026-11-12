@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       success: true,
       logs: logs.map((l) => ({
         id: l._id.toString(),
-        adminId: l.adminId.toString(),
+        adminId: l.adminId ? l.adminId.toString() : null,
         adminEmail: l.adminEmail,
         adminName: l.adminName,
         action: l.action,

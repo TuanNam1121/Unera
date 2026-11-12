@@ -1,82 +1,105 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { ACCOUNT_STATUS, AUTH_PROVIDERS } from "@/constants";
+import { getDevErrorDetails } from "@/lib/api-error";
 import { connectToDatabase } from "@/lib/db";
-import { User } from "@/models/User";
+import { clearAuthCookies } from "@/lib/jwt";
+import {
+  buildRateLimitResponse,
+  checkRateLimit,
+  getClientIp,
+} from "@/lib/rate-limit";
+import { hashToken, revokeAllUserRefreshTokens } from "@/lib/tokens";
 import { PasswordResetToken } from "@/models/PasswordResetToken";
+import { User } from "@/models/User";
 import { resetPasswordSchema } from "@/validations";
-import { ACCOUNT_STATUS } from "@/constants";
 
+/**
+ * POST /api/auth/reset-password
+ * Xác thực token 1 lần, cập nhật mật khẩu mới và thu hồi toàn bộ phiên Refresh Token hiện có
+ */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const validated = resetPasswordSchema.safeParse(body);
+    const ip = getClientIp(req);
+    const rate = checkRateLimit(`auth:reset:${ip}`, 10, 15 * 60_000);
+    if (!rate.allowed) {
+      return buildRateLimitResponse(
+        rate.retryAfterSeconds,
+        "Bạn đã thử đặt lại mật khẩu quá nhiều lần. Vui lòng thử lại sau."
+      );
+    }
 
-    if (!validated.success) {
+    const body = await req.json();
+    const parsed = resetPasswordSchema.safeParse(body);
+
+    if (!parsed.success) {
       return NextResponse.json(
-        {
-          error: "Dữ liệu không hợp lệ",
-          details: validated.error.issues.map((i) => i.message),
-        },
+        { error: parsed.error.issues[0]?.message || "Dữ liệu không hợp lệ" },
         { status: 400 }
       );
     }
 
-    const { token, password } = validated.data;
-
+    const { token, password } = parsed.data;
     await connectToDatabase();
 
-    // 1. Tìm token và kiểm tra thời hạn (FR-AUTH-05 AC-01)
-    const resetRecord = await PasswordResetToken.findOne({
-      token,
-      expiresAt: { $gt: new Date() },
-    });
+    const tokenHash = hashToken(token.trim());
+    const resetDoc = await PasswordResetToken.findOne({ tokenHash });
 
-    if (!resetRecord) {
+    if (!resetDoc) {
       return NextResponse.json(
-        {
-          error:
-            "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng gửi lại yêu cầu mới.",
-        },
+        { error: "Liên kết khôi phục mật khẩu không hợp lệ hoặc đã được sử dụng." },
         { status: 400 }
       );
     }
 
-    // 2. Tìm user tương ứng
-    const user = await User.findById(resetRecord.userId);
+    if (resetDoc.usedAt || resetDoc.expiresAt.getTime() <= Date.now()) {
+      await PasswordResetToken.deleteOne({ _id: resetDoc._id });
+      return NextResponse.json(
+        { error: "Liên kết khôi phục mật khẩu đã hết hạn. Vui lòng gửi yêu cầu mới." },
+        { status: 400 }
+      );
+    }
+
+    const user = await User.findById(resetDoc.userId);
     if (!user) {
       return NextResponse.json(
-        { error: "Người dùng không tồn tại trong hệ thống." },
+        { error: "Tài khoản không tồn tại." },
         { status: 404 }
       );
     }
 
     if (user.status === ACCOUNT_STATUS.DISABLED) {
       return NextResponse.json(
-        { error: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ ban quản trị." },
+        { error: "Tài khoản này đang bị vô hiệu hóa." },
         { status: 403 }
       );
     }
 
-    // 3. Mã hóa mật khẩu mới (FR-AUTH-06)
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    user.password = hashedPassword;
+    user.password = await bcrypt.hash(password, 12);
+    const providers = Array.isArray(user.authProviders) ? user.authProviders : [];
+    if (!providers.includes(AUTH_PROVIDERS.CREDENTIALS)) {
+      user.authProviders = [...providers, AUTH_PROVIDERS.CREDENTIALS];
+    }
     await user.save();
 
-    // 4. Xóa token đã sử dụng (AC-02: Single-use)
-    await PasswordResetToken.deleteOne({ _id: resetRecord._id });
+    // Đánh dấu đã sử dụng & xóa các token khôi phục của người dùng
+    resetDoc.usedAt = new Date();
+    await resetDoc.save();
+    await PasswordResetToken.deleteMany({ userId: user._id });
 
-    return NextResponse.json({
+    // Thu hồi toàn bộ Refresh Token đang hoạt động để bảo mật tài khoản sau khi đổi mật khẩu
+    await revokeAllUserRefreshTokens(user._id.toString());
+
+    const res = NextResponse.json({
       success: true,
-      message: "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.",
+      message: "Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới.",
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Đã có lỗi xảy ra";
+    clearAuthCookies(res);
+    return res;
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: "Không thể đặt lại mật khẩu. Vui lòng thử lại sau.", details: message },
+      { error: "Lỗi máy chủ khi đặt lại mật khẩu", ...getDevErrorDetails(error) },
       { status: 500 }
     );
   }
 }
-

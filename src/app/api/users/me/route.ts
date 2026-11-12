@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { getAppBaseUrl } from "@/lib/jwt";
 
 /**
- * FR-AUTH-11 & BR-29: Ngăn chặn tuyệt đối sinh viên tự xóa tài khoản
+ * Ngăn chặn sinh viên tự xóa tài khoản; chuyển tiếp GET sang /api/auth/me
  */
 export async function DELETE() {
   return NextResponse.json(
@@ -15,6 +16,5 @@ export async function DELETE() {
 }
 
 export async function GET() {
-  return NextResponse.redirect(new URL("/api/auth/me", process.env.NEXTAUTH_URL || "http://localhost:3000"));
+  return NextResponse.redirect(new URL("/api/auth/me", getAppBaseUrl()));
 }
-

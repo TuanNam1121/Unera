@@ -1,32 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Home,
-  Search,
   Compass,
   Bell,
-  Newspaper,
+  Image as ImageIcon,
   User,
   GraduationCap,
+  Newspaper,
   Award,
   Wrench,
   ChevronDown,
   ChevronRight,
   ShieldCheck,
   Users,
-  Briefcase,
-  FileText,
   CalendarCheck,
   FolderTree,
   ClipboardList,
   History,
   ArrowLeft,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type {
+  IActivityCategoryDTO,
+  INewsCategoryDTO,
+  IOrientationCategoryDTO,
+} from "@/types";
 
 interface SubItem {
   label: string;
@@ -42,47 +44,149 @@ interface MenuItem {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isAdminRoute = pathname.startsWith("/admin");
 
-  // Accordion states
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    // User sections
-    explore: false,
-    notifications: false,
-    profile: false,
-    activities: false,
-    certificates: false,
-    tools: false,
-    // Admin sections
-    adminStudents: true,
-    adminOpportunities: true,
-    adminNews: false,
-    adminMentors: false,
-    adminCatalog: false,
-    adminQuiz: false,
-  });
+  const [orientationCategories, setOrientationCategories] = useState<
+    IOrientationCategoryDTO[]
+  >([]);
+  const [activityCategories, setActivityCategories] = useState<
+    IActivityCategoryDTO[]
+  >([]);
+  const [newsCategories, setNewsCategories] = useState<INewsCategoryDTO[]>([]);
 
-  // Tự động mở menu cha nếu pathname hiện tại khớp với mục con
-  useEffect(() => {
+  // Derived route auto-open key + per-pathname manual accordion toggles
+  const routeOpenKey = useMemo(() => {
     if (isAdminRoute) {
-      if (pathname.startsWith("/admin/students")) setOpenSections((prev) => ({ ...prev, adminStudents: true }));
-      if (pathname.startsWith("/admin/opportunities")) setOpenSections((prev) => ({ ...prev, adminOpportunities: true }));
-      if (pathname.startsWith("/admin/news")) setOpenSections((prev) => ({ ...prev, adminNews: true }));
-      if (pathname.startsWith("/admin/mentors") || pathname.startsWith("/admin/bookings")) setOpenSections((prev) => ({ ...prev, adminMentors: true }));
-      if (pathname.startsWith("/admin/certificates") || pathname.startsWith("/admin/activities")) setOpenSections((prev) => ({ ...prev, adminCatalog: true }));
-      if (pathname.startsWith("/admin/quiz") || pathname.startsWith("/admin/roadmaps")) setOpenSections((prev) => ({ ...prev, adminQuiz: true }));
-    } else {
-      if (pathname.startsWith("/explore")) setOpenSections((prev) => ({ ...prev, explore: true }));
-      if (pathname.startsWith("/notifications")) setOpenSections((prev) => ({ ...prev, notifications: true }));
-      if (pathname.startsWith("/profile")) setOpenSections((prev) => ({ ...prev, profile: true }));
-      if (pathname.startsWith("/activities")) setOpenSections((prev) => ({ ...prev, activities: true }));
-      if (pathname.startsWith("/certificates")) setOpenSections((prev) => ({ ...prev, certificates: true }));
-      if (pathname.startsWith("/tools")) setOpenSections((prev) => ({ ...prev, tools: true }));
+      if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/students")) return "adminUsers";
+      if (pathname.startsWith("/admin/activities")) return "adminActivities";
+      if (pathname.startsWith("/admin/news")) return "adminNews";
+      if (pathname.startsWith("/admin/explore")) return "adminExplore";
+      if (pathname.startsWith("/admin/media")) return "adminMedia";
+      if (pathname.startsWith("/admin/mentors") || pathname.startsWith("/admin/bookings")) return "adminMentors";
+      if (pathname.startsWith("/admin/certificates")) return "adminCatalog";
+      if (pathname.startsWith("/admin/quiz") || pathname.startsWith("/admin/ai-prompts")) return "adminQuiz";
+      return null;
     }
+    if (pathname.startsWith("/explore")) return "explore";
+    if (pathname.startsWith("/notifications")) return "notifications";
+    if (
+      pathname.startsWith("/profile") ||
+      pathname.startsWith("/roadmap") ||
+      pathname.startsWith("/tools/cv-builder")
+    ) {
+      return "profile";
+    }
+    if (pathname.startsWith("/activities")) return "activities";
+    if (pathname.startsWith("/news")) return "news";
+    if (pathname.startsWith("/certificates")) return "certificates";
+    if (pathname.startsWith("/tools") || pathname.startsWith("/onboarding")) return "tools";
+    return null;
   }, [pathname, isAdminRoute]);
 
+  const [manualToggles, setManualToggles] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
+  const openSections: Record<string, boolean> = {
+    adminStudents: true,
+    adminActivities: true,
+    ...(routeOpenKey ? { [routeOpenKey]: true } : {}),
+    ...(manualToggles[pathname] ?? {}),
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTaxonomy() {
+      try {
+        const res = await fetch("/api/orientation/taxonomy", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!cancelled && res.ok && Array.isArray(data.categories)) {
+          setOrientationCategories(data.categories);
+        }
+      } catch {
+        // Non-fatal fallback: keep current subitems
+      }
+    }
+
+    async function loadActivityCategories() {
+      try {
+        const res = await fetch("/api/activities/categories", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!cancelled && res.ok && Array.isArray(data.categories)) {
+          setActivityCategories(data.categories);
+        }
+      } catch {
+        // Non-fatal fallback: keep default subitems
+      }
+    }
+
+    async function loadNewsCategories() {
+      try {
+        const res = await fetch("/api/news/categories", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!cancelled && res.ok && Array.isArray(data.categories)) {
+          setNewsCategories(data.categories);
+        }
+      } catch {
+        // Non-fatal fallback: keep default subitems
+      }
+    }
+
+    loadTaxonomy();
+    loadActivityCategories();
+    loadNewsCategories();
+
+    const handleTaxonomyUpdated = () => {
+      loadTaxonomy();
+    };
+    const handleActivityCategoriesUpdated = () => {
+      loadActivityCategories();
+    };
+    const handleNewsCategoriesUpdated = () => {
+      loadNewsCategories();
+    };
+    window.addEventListener("unera:taxonomy-updated", handleTaxonomyUpdated);
+    window.addEventListener(
+      "unera:activity-categories-updated",
+      handleActivityCategoriesUpdated
+    );
+    window.addEventListener(
+      "unera:news-categories-updated",
+      handleNewsCategoriesUpdated
+    );
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        "unera:taxonomy-updated",
+        handleTaxonomyUpdated
+      );
+      window.removeEventListener(
+        "unera:activity-categories-updated",
+        handleActivityCategoriesUpdated
+      );
+      window.removeEventListener(
+        "unera:news-categories-updated",
+        handleNewsCategoriesUpdated
+      );
+    };
+  }, []);
+
   const toggleSection = (key: string) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    const nextValue = !openSections[key];
+    setManualToggles((prev) => ({
+      ...prev,
+      [pathname]: {
+        ...(prev[pathname] ?? {}),
+        [key]: nextValue,
+      },
+    }));
   };
 
   // 1. Menu dành riêng cho Quản trị viên (Admin CMS Sidebar)
@@ -91,44 +195,66 @@ export function Sidebar() {
       item: { icon: ShieldCheck, label: "Tổng quan Quản trị", href: "/admin" },
     },
     {
-      key: "adminStudents",
+      key: "adminUsers",
       item: {
         icon: Users,
-        label: "Quản lý Sinh viên",
-        href: "/admin/students",
+        label: "Quản lý Người dùng",
+        href: "/admin/users",
         subItems: [
-          { label: "Tất cả sinh viên", href: "/admin/students" },
-          { label: "Tài khoản đang hoạt động", href: "/admin/students?status=ACTIVE" },
-          { label: "Tài khoản bị khóa", href: "/admin/students?status=DISABLED" },
+          { label: "Tất cả người dùng", href: "/admin/users" },
+          { label: "Sinh viên (STUDENT)", href: "/admin/users?role=STUDENT" },
+          { label: "Quản trị viên (ADMIN)", href: "/admin/users?role=ADMIN" },
+          { label: "Tài khoản bị khóa", href: "/admin/users?status=DISABLED" },
         ],
       },
     },
     {
-      key: "adminOpportunities",
+      key: "adminActivities",
       item: {
-        icon: Briefcase,
-        label: "Quản trị Cơ hội",
-        href: "/admin/opportunities",
+        icon: GraduationCap,
+        label: "Hoạt động sinh viên",
+        href: "/admin/activities",
         subItems: [
-          { label: "Tất cả cơ hội", href: "/admin/opportunities" },
-          { label: "+ Thêm cơ hội mới", href: "/admin/opportunities/new" },
-          { label: "Cơ hội đang mở", href: "/admin/opportunities?status=PUBLISHED" },
-          { label: "Bản nháp & Chờ duyệt", href: "/admin/opportunities?status=DRAFT" },
-          { label: "Cơ hội đã đóng", href: "/admin/opportunities?status=CLOSED" },
+          { label: "Tất cả hoạt động", href: "/admin/activities" },
+          { label: "+ Tạo hoạt động mới", href: "/admin/activities/new" },
+          { label: "Danh mục hoạt động", href: "/admin/activities/categories" },
+          { label: "Thống kê tương tác", href: "/admin/activities/statistics" },
         ],
       },
     },
     {
       key: "adminNews",
       item: {
-        icon: FileText,
+        icon: Newspaper,
         label: "Tin tức & Sự kiện",
         href: "/admin/news",
         subItems: [
-          { label: "Danh sách bài viết", href: "/admin/news" },
-          { label: "+ Đăng tin mới", href: "/admin/news/new" },
-          { label: "Nội dung tài trợ", href: "/admin/news?sponsored=true" },
+          { label: "Tất cả tin tức", href: "/admin/news" },
+          { label: "+ Viết bài mới", href: "/admin/news/new" },
+          { label: "Chuyên mục tin tức", href: "/admin/news/categories" },
+          { label: "Quản lý Thẻ (Tags)", href: "/admin/news/tags" },
+          { label: "Thống kê đọc & Share", href: "/admin/news/analytics" },
         ],
+      },
+    },
+    {
+      key: "adminExplore",
+      item: {
+        icon: Compass,
+        label: "Khám phá định hướng",
+        href: "/admin/explore",
+        subItems: [
+          { label: "Bài viết định hướng", href: "/admin/explore" },
+          { label: "+ Viết bài định hướng", href: "/admin/explore/new" },
+          { label: "Danh mục & Chủ đề", href: "/admin/explore/taxonomy" },
+        ],
+      },
+    },
+    {
+      item: {
+        icon: ImageIcon,
+        label: "Thư viện Media CMS",
+        href: "/admin/media",
       },
     },
     {
@@ -148,11 +274,10 @@ export function Sidebar() {
       key: "adminCatalog",
       item: {
         icon: FolderTree,
-        label: "Chứng chỉ & Hoạt động",
+        label: "Quản lý Chứng chỉ",
         href: "/admin/certificates",
         subItems: [
           { label: "Danh mục Chứng chỉ", href: "/admin/certificates" },
-          { label: "Hoạt động ngoại khóa", href: "/admin/activities" },
         ],
       },
     },
@@ -160,11 +285,11 @@ export function Sidebar() {
       key: "adminQuiz",
       item: {
         icon: ClipboardList,
-        label: "Trắc nghiệm & Lộ trình",
+        label: "Định hướng & AI",
         href: "/admin/quiz",
         subItems: [
-          { label: "Bộ câu hỏi trắc nghiệm", href: "/admin/quiz" },
-          { label: "Mẫu lộ trình đào tạo", href: "/admin/roadmaps" },
+          { label: "Bộ câu hỏi & Logic", href: "/admin/quiz" },
+          { label: "System Prompt Gemini", href: "/admin/ai-prompts" },
         ],
       },
     },
@@ -173,13 +298,57 @@ export function Sidebar() {
     },
   ];
 
+  const dynamicExploreSubItems: SubItem[] = useMemo(() => {
+    const items: SubItem[] = [{ label: "Tất cả bài viết", href: "/explore" }];
+    for (const cat of orientationCategories) {
+      items.push({
+        label: cat.name,
+        href: `/explore?category=${cat.slug}`,
+      });
+      for (const topic of cat.topics || []) {
+        items.push({
+          label: `· ${topic.name}`,
+          href: `/explore?category=${cat.slug}&topic=${topic.slug}`,
+        });
+      }
+    }
+    return items;
+  }, [orientationCategories]);
+
+  const dynamicActivitiesSubItems: SubItem[] = useMemo(() => {
+    const items: SubItem[] = [
+      { label: "Tất cả hoạt động", href: "/activities" },
+      { label: "Hoạt động đã quan tâm", href: "/activities?tab=followed" },
+    ];
+    for (const cat of activityCategories) {
+      items.push({
+        label: cat.name,
+        href: `/activities?category=${cat.slug}`,
+      });
+    }
+    return items;
+  }, [activityCategories]);
+
+  const dynamicNewsSubItems: SubItem[] = useMemo(() => {
+    const items: SubItem[] = [
+      { label: "Tất cả tin tức", href: "/news" },
+      { label: "Bài viết đã lưu", href: "/news/saved" },
+      { label: "Lịch sử đã đọc", href: "/news/history" },
+    ];
+    for (const cat of newsCategories) {
+      if (cat.showInSidebar === false) continue;
+      items.push({
+        label: cat.name,
+        href: `/news?category=${cat.slug}`,
+      });
+    }
+    return items;
+  }, [newsCategories]);
+
   // 2. Menu dành cho Sinh viên (User Sidebar)
   const userMenuItems: { key?: string; item: MenuItem }[] = [
     {
       item: { icon: Home, label: "Trang chủ", href: "/" },
-    },
-    {
-      item: { icon: Search, label: "Tìm kiếm", href: "/search" },
     },
     {
       key: "explore",
@@ -187,18 +356,7 @@ export function Sidebar() {
         icon: Compass,
         label: "Khám phá định hướng",
         href: "/explore",
-        subItems: [
-          { label: "Du học", href: "/explore?category=study_abroad" },
-          { label: "Khối ngành", href: "/explore?category=career_discipline" },
-          { label: "· Ngôn ngữ", href: "/explore?category=career_discipline&tag=language" },
-          { label: "· Kinh tế – Quản trị", href: "/explore?category=career_discipline&tag=economy" },
-          { label: "· Công nghệ – Kỹ thuật", href: "/explore?category=career_discipline&tag=tech" },
-          { label: "· Truyền thông", href: "/explore?category=career_discipline&tag=media" },
-          { label: "· Luật", href: "/explore?category=career_discipline&tag=law" },
-          { label: "· Khoa học xã hội", href: "/explore?category=career_discipline&tag=social" },
-          { label: "· Du lịch – Dịch vụ", href: "/explore?category=career_discipline&tag=tourism" },
-          { label: "Thạc sĩ, NCS, Tiến sĩ", href: "/explore?category=postgrad" },
-        ],
+        subItems: dynamicExploreSubItems,
       },
     },
     {
@@ -208,15 +366,14 @@ export function Sidebar() {
         label: "Thông báo",
         href: "/notifications",
         subItems: [
-          { label: "Thông báo sự kiện sắp diễn ra", href: "/notifications?type=upcoming" },
-          { label: "Thông báo sự kiện mở đơn", href: "/notifications?type=opened" },
-          { label: "Thông báo sự kiện sắp đóng đơn", href: "/notifications?type=closing" },
-          { label: "Thông báo tuyển dụng", href: "/notifications?type=jobs" },
+          { label: "Tất cả thông báo", href: "/notifications" },
+          { label: "Chưa đọc", href: "/notifications?filter=unread" },
+          { label: "Nhắc hạn nộp (Deadline)", href: "/notifications?type=DEADLINE_REMINDER" },
+          { label: "Sự kiện sắp diễn ra", href: "/notifications?type=EVENT_REMINDER" },
+          { label: "Lộ trình & Hệ thống", href: "/notifications?type=SYSTEM" },
+          { label: "Cài đặt nhắc nhở", href: "/notifications/settings" },
         ],
       },
-    },
-    {
-      item: { icon: Newspaper, label: "Tin tức", href: "/news" },
     },
     {
       key: "profile",
@@ -228,6 +385,7 @@ export function Sidebar() {
           { label: "Thông tin & Mục tiêu", href: "/profile" },
           { label: "CV chuẩn ATS", href: "/tools/cv-builder" },
           { label: "Lộ trình hóa cá nhân", href: "/roadmap" },
+          { label: "Lịch sử lộ trình", href: "/roadmap/history" },
         ],
       },
     },
@@ -237,14 +395,16 @@ export function Sidebar() {
         icon: GraduationCap,
         label: "Hoạt động sinh viên",
         href: "/activities",
-        subItems: [
-          { label: "NCKH", href: "/activities?type=research" },
-          { label: "Management Trainee", href: "/activities?type=mt" },
-          { label: "Các cuộc thi", href: "/activities?type=competitions" },
-          { label: "Chương trình đại sứ", href: "/activities?type=ambassador" },
-          { label: "Học bổng sinh viên", href: "/activities?type=scholarships" },
-          { label: "Các sự kiện khác", href: "/activities?type=events" },
-        ],
+        subItems: dynamicActivitiesSubItems,
+      },
+    },
+    {
+      key: "news",
+      item: {
+        icon: Newspaper,
+        label: "Tin tức & Cơ hội",
+        href: "/news",
+        subItems: dynamicNewsSubItems,
       },
     },
     {
@@ -268,7 +428,9 @@ export function Sidebar() {
         label: "Công cụ",
         href: "/tools",
         subItems: [
+          { label: "Tổng quan Công cụ", href: "/tools" },
           { label: "Trắc nghiệm Onboarding", href: "/onboarding" },
+          { label: "Lịch sử định hướng AI", href: "/onboarding/history" },
           { label: "Trắc nghiệm MBTI", href: "/tools/mbti" },
           { label: "Trắc nghiệm MI", href: "/tools/mi" },
           { label: "Cách tính lương Gross - Net", href: "/tools/gross-net" },
@@ -280,8 +442,12 @@ export function Sidebar() {
 
   const currentMenu = isAdminRoute ? adminMenuItems : userMenuItems;
 
+  if (pathname.startsWith("/cv/")) {
+    return null;
+  }
+
   return (
-    <aside className="sticky top-0 z-40 flex h-screen w-[250px] shrink-0 flex-col justify-between border-r border-slate-200/80 bg-white">
+    <aside className="sticky top-0 z-40 flex h-screen w-[250px] shrink-0 flex-col justify-between border-r border-slate-200/80 bg-white print:hidden">
       <div className="flex flex-col overflow-y-auto">
         {/* Brand Header */}
         <div className="flex flex-col px-6 pt-5 pb-4">
@@ -355,7 +521,13 @@ export function Sidebar() {
                 {hasSub && isOpen && (
                   <div className="pl-8 pr-2 py-1 space-y-0.5 border-l-2 border-blue-100 ml-4 my-0.5">
                     {item.subItems!.map((sub) => {
-                      const isSubActive = pathname === sub.href;
+                      const queryString = searchParams.toString();
+                      const currentFullUrl = queryString
+                        ? `${pathname}?${queryString}`
+                        : pathname;
+                      const isSubActive = sub.href.includes("?")
+                        ? currentFullUrl === sub.href
+                        : pathname === sub.href && !queryString;
                       return (
                         <Link
                           key={sub.label}

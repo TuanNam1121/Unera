@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
-import { USER_ROLES, ACCOUNT_STATUS } from "@/constants";
+import { USER_ROLES, ACCOUNT_STATUS, AUTH_PROVIDERS, ONBOARDING_STEPS } from "@/constants";
 import { IUser } from "@/types";
 
 export interface IUserDocument extends Omit<IUser, "_id">, Document {}
@@ -22,6 +22,19 @@ const UserSchema = new Schema<IUserDocument>(
       default: ACCOUNT_STATUS.ACTIVE,
       required: true,
     },
+    authProviders: {
+      type: [String],
+      enum: Object.values(AUTH_PROVIDERS),
+      default: [AUTH_PROVIDERS.CREDENTIALS],
+    },
+    googleId: { type: String, unique: true, sparse: true },
+    isProfileCompleted: { type: Boolean, default: false },
+    onboardingStep: {
+      type: String,
+      enum: Object.values(ONBOARDING_STEPS),
+      default: ONBOARDING_STEPS.PROFILE,
+    },
+    lastLoginAt: { type: Date, default: null },
     emailVerified: { type: Date, default: null },
   },
   {

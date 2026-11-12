@@ -15,7 +15,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Unera — Định hướng học tập & Phát triển tương lai",
   description:
-    "Nền tảng định hướng học tập, khám phá cơ hội, quản lý lộ trình cá nhân và theo dõi hạn chót dành riêng cho sinh viên đại học.",
+    "Nền tảng định hướng học tập, khám phá hoạt động sinh viên, quản lý lộ trình cá nhân và kết nối cố vấn dành riêng cho sinh viên đại học.",
 };
 
 export default function RootLayout({

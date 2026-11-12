@@ -1,80 +1,124 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import {
+  ACCOUNT_STATUS,
+  AUTH_PROVIDERS,
+  ONBOARDING_STEPS,
+  USER_ROLES,
+} from "@/constants";
+import { getDevErrorDetails } from "@/lib/api-error";
 import { connectToDatabase } from "@/lib/db";
-import { User } from "@/models/User";
+import { setAuthCookies } from "@/lib/jwt";
+import {
+  buildRateLimitResponse,
+  checkRateLimit,
+  getClientIp,
+} from "@/lib/rate-limit";
+import { issueTokenPair } from "@/lib/tokens";
 import { StudentProfile } from "@/models/StudentProfile";
+import { User } from "@/models/User";
 import { registerSchema } from "@/validations";
-import { USER_ROLES, ACCOUNT_STATUS } from "@/constants";
 
+/**
+ * POST /api/auth/register
+ * Bước 1 đăng ký tài khoản: Email, Password, Confirm Password.
+ * Tạo tài khoản chưa hoàn thiện hồ sơ và điều hướng sang Bước 2 (/register/complete-profile).
+ */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const validatedData = registerSchema.safeParse(body);
+    const ip = getClientIp(req);
+    const rate = checkRateLimit(`auth:register:${ip}`, 10, 15 * 60_000);
+    if (!rate.allowed) {
+      return buildRateLimitResponse(
+        rate.retryAfterSeconds,
+        "Quá nhiều yêu cầu đăng ký từ thiết bị này. Vui lòng thử lại sau."
+      );
+    }
 
-    if (!validatedData.success) {
+    const body = await req.json();
+    const parsed = registerSchema.safeParse(body);
+
+    if (!parsed.success) {
       return NextResponse.json(
         {
-          error: "Dữ liệu không hợp lệ",
-          details: validatedData.error.issues.map((issue) => issue.message),
+          error: parsed.error.issues[0]?.message || "Dữ liệu đăng ký không hợp lệ",
+          details: parsed.error.issues.map((issue) => issue.message),
         },
         { status: 400 }
       );
     }
 
-    const { name, email, password } = validatedData.data;
-    const normalizedEmail = email.toLowerCase().trim();
-
+    const { email, password } = parsed.data;
     await connectToDatabase();
 
-    // Kiểm tra xem email đã được đăng ký chưa
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return NextResponse.json(
-        { error: "Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác." },
+        { error: "Địa chỉ email này đã được đăng ký trong hệ thống." },
         { status: 409 }
       );
     }
 
-    // Mã hóa mật khẩu
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const tempDisplayName = email.split("@")[0] || "Sinh viên UNERA";
 
-    // Tạo User với vai trò STUDENT theo FR-AUTH-01
     const newUser = await User.create({
-      name: name.trim(),
-      email: normalizedEmail,
+      name: tempDisplayName,
+      email,
       password: hashedPassword,
       role: USER_ROLES.STUDENT,
       status: ACCOUNT_STATUS.ACTIVE,
+      authProviders: [AUTH_PROVIDERS.CREDENTIALS],
+      isProfileCompleted: false,
+      onboardingStep: ONBOARDING_STEPS.PROFILE,
+      lastLoginAt: new Date(),
     });
 
-    // Tự động khởi tạo StudentProfile ban đầu (FR-PRO-01)
     await StudentProfile.create({
       userId: newUser._id.toString(),
-      fullName: newUser.name,
+      fullName: tempDisplayName,
+      developmentGoals: {
+        studyAbroad: false,
+        employment: false,
+        scientificResearch: false,
+        startup: false,
+        personalGrowth: false,
+      },
       skills: [],
       achievements: [],
-      developmentGoals: {},
     });
 
-    return NextResponse.json(
+    const { accessToken, refreshToken } = await issueTokenPair({
+      user: newUser,
+      rememberMe: false,
+      req,
+    });
+
+    const response = NextResponse.json(
       {
-        message: "Đăng ký tài khoản thành công",
+        success: true,
+        message: "Tạo tài khoản thành công! Vui lòng hoàn thiện thông tin sinh viên.",
+        nextStepUrl: "/register/complete-profile",
+        accessToken,
         user: {
           id: newUser._id.toString(),
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
+          status: newUser.status,
+          isProfileCompleted: false,
+          onboardingStep: ONBOARDING_STEPS.PROFILE,
         },
       },
       { status: 201 }
     );
+
+    setAuthCookies(response, accessToken, refreshToken, false);
+    return response;
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Đã có lỗi xảy ra";
     return NextResponse.json(
-      { error: "Không thể tạo tài khoản. Vui lòng thử lại sau.", details: message },
+      { error: "Lỗi máy chủ trong quá trình đăng ký", ...getDevErrorDetails(error) },
       { status: 500 }
     );
   }
 }
-

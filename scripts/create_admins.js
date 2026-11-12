@@ -15,6 +15,9 @@ async function createAdmins() {
       password: defaultPassword,
       role: 'ADMIN',
       status: 'ACTIVE',
+      authProviders: ['CREDENTIALS'],
+      isProfileCompleted: true,
+      onboardingStep: 'COMPLETED',
       avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=UneraAdmin',
       updatedAt: new Date(),
     },
@@ -24,6 +27,9 @@ async function createAdmins() {
       password: defaultPassword,
       role: 'ADMIN',
       status: 'ACTIVE',
+      authProviders: ['CREDENTIALS'],
+      isProfileCompleted: true,
+      onboardingStep: 'COMPLETED',
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=LanNguyen',
       updatedAt: new Date(),
     },
@@ -33,6 +39,9 @@ async function createAdmins() {
       password: defaultPassword,
       role: 'ADMIN',
       status: 'ACTIVE',
+      authProviders: ['CREDENTIALS'],
+      isProfileCompleted: true,
+      onboardingStep: 'COMPLETED',
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MinhTran',
       updatedAt: new Date(),
     },
@@ -42,6 +51,9 @@ async function createAdmins() {
       password: defaultPassword,
       role: 'ADMIN',
       status: 'ACTIVE',
+      authProviders: ['CREDENTIALS'],
+      isProfileCompleted: true,
+      onboardingStep: 'COMPLETED',
       avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=UlisAdmin',
       updatedAt: new Date(),
     },
@@ -64,7 +76,7 @@ async function createAdmins() {
   if (googleUser) {
     await mongoose.connection.collection('users').updateOne(
       { email: 'emnam2k5@gmail.com' },
-      { $set: { role: 'ADMIN', updatedAt: new Date() } }
+      { $set: { role: 'ADMIN', isProfileCompleted: true, onboardingStep: 'COMPLETED', updatedAt: new Date() } }
     );
     console.log('✓ Đã nâng quyền tài khoản Google cá nhân emnam2k5@gmail.com thành: ADMIN');
   }

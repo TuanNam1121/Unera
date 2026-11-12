@@ -3,7 +3,8 @@ import { requireAdmin, handleAuthError } from "@/lib/session";
 import { connectToDatabase } from "@/lib/db";
 import { BookingRequest } from "@/models/BookingRequest";
 import { logAuditAction } from "@/lib/audit";
-import { BOOKING_STATUS } from "@/constants";
+import { createSystemNotification } from "@/lib/notifications";
+import { BOOKING_STATUS, NOTIFICATION_TYPES } from "@/constants";
 
 /**
  * PATCH /api/admin/bookings/[id]
@@ -53,6 +54,21 @@ export async function PATCH(
       reason: adminResponse || `Chuyển trạng thái sang ${status}`,
       req,
     });
+
+    if (status !== previousStatus && booking.studentId) {
+      const statusMeta =
+        BOOKING_STATUS[status as keyof typeof BOOKING_STATUS];
+      const statusLabel = statusMeta?.label || status;
+      await createSystemNotification({
+        recipientId: booking.studentId,
+        type: NOTIFICATION_TYPES.BOOKING_UPDATE,
+        title: `Cập nhật lịch tư vấn Mentor: ${booking.topic}`,
+        message: `Yêu cầu tư vấn của bạn đã chuyển sang trạng thái "${statusLabel}"${
+          booking.adminResponse ? ` — Ghi chú: ${booking.adminResponse}` : "."
+        }`,
+        link: "/mentors",
+      });
+    }
 
     return NextResponse.json({
       success: true,

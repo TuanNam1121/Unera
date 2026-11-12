@@ -1,24 +1,77 @@
 import { NextResponse } from "next/server";
-import { requireAuth, handleAuthError } from "@/lib/session";
+import { AUTH_COOKIE_NAMES } from "@/constants";
 import { connectToDatabase } from "@/lib/db";
+import { ACCESS_TOKEN_MAX_AGE_SECONDS, getAuthCookieOptions } from "@/lib/jwt";
+import {
+  normalizeUniqueStrings,
+  resolveCategorizedSkills,
+} from "@/lib/profile-skills";
+import { handleAuthError, requireAuth } from "@/lib/session";
+import { signAccessTokenForUser } from "@/lib/tokens";
 import { StudentProfile } from "@/models/StudentProfile";
 import { User } from "@/models/User";
+import type { IDevelopmentGoals } from "@/types";
 import { updateProfileSchema } from "@/validations";
+
+function formatProfileResponse(
+  profileDoc: {
+    _id: unknown;
+    userId: string;
+    fullName: string;
+    birthYear?: number;
+    avatar?: string;
+    university?: string;
+    major?: string;
+    academicYear?: string;
+    bio?: string;
+    developmentGoals?: IDevelopmentGoals;
+    skills?: string[];
+    hardSkills?: string[];
+    softSkills?: string[];
+    achievements?: string[];
+    createdAt?: Date;
+    updatedAt?: Date;
+  }
+) {
+  const { hardSkills, softSkills, skills } = resolveCategorizedSkills({
+    hardSkills: profileDoc.hardSkills,
+    softSkills: profileDoc.softSkills,
+    skills: profileDoc.skills,
+  });
+
+  return {
+    _id: String(profileDoc._id),
+    userId: profileDoc.userId,
+    fullName: profileDoc.fullName,
+    birthYear: profileDoc.birthYear,
+    avatar: profileDoc.avatar,
+    university: profileDoc.university || "",
+    major: profileDoc.major || "",
+    academicYear: profileDoc.academicYear || "",
+    bio: profileDoc.bio || "",
+    developmentGoals: profileDoc.developmentGoals || {},
+    skills,
+    hardSkills,
+    softSkills,
+    achievements: normalizeUniqueStrings(profileDoc.achievements),
+    createdAt: profileDoc.createdAt,
+    updatedAt: profileDoc.updatedAt,
+  };
+}
 
 /**
  * GET /api/profile
- * FR-PRO-01, FR-PRO-05: Lấy thông tin hồ sơ của sinh viên đang đăng nhập
+ * Xem thông tin hồ sơ của sinh viên đang đăng nhập (tự động khởi tạo nếu chưa có)
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const authUser = await requireAuth();
+    const authUser = await requireAuth(req);
 
     await connectToDatabase();
-    let profile = await StudentProfile.findOne({ userId: authUser.id });
+    let profile = await StudentProfile.findOne({ userId: authUser.id }).lean();
 
-    // Tự động khởi tạo profile nếu chưa có
     if (!profile) {
-      profile = await StudentProfile.create({
+      const created = await StudentProfile.create({
         userId: authUser.id,
         fullName: authUser.name,
         avatar: authUser.image,
@@ -30,13 +83,16 @@ export async function GET() {
           personalGrowth: false,
         },
         skills: [],
+        hardSkills: [],
+        softSkills: [],
         achievements: [],
       });
+      profile = created.toObject();
     }
 
     return NextResponse.json({
       success: true,
-      profile,
+      profile: formatProfileResponse(profile),
       user: {
         id: authUser.id,
         name: authUser.name,
@@ -52,11 +108,11 @@ export async function GET() {
 
 /**
  * PUT /api/profile
- * FR-PRO-01, FR-PRO-03, FR-PRO-04, FR-PRO-06: Cập nhật thông tin học vấn, tiểu sử, kỹ năng, thành tích
+ * Cập nhật thông tin cá nhân, học vấn, kỹ năng chuyên môn & kỹ năng mềm, bảng thành tích
  */
 export async function PUT(req: Request) {
   try {
-    const authUser = await requireAuth();
+    const authUser = await requireAuth(req);
 
     const body = await req.json();
     const validated = updateProfileSchema.safeParse(body);
@@ -64,7 +120,9 @@ export async function PUT(req: Request) {
     if (!validated.success) {
       return NextResponse.json(
         {
-          error: "Dữ liệu cập nhật hồ sơ không hợp lệ",
+          error:
+            validated.error.issues[0]?.message ||
+            "Dữ liệu cập nhật hồ sơ không hợp lệ",
           details: validated.error.issues.map((i) => i.message),
         },
         { status: 400 }
@@ -73,35 +131,90 @@ export async function PUT(req: Request) {
 
     await connectToDatabase();
 
-    const updateData: Record<string, any> = {};
-    const { fullName, university, major, academicYear, bio, skills, achievements } = validated.data;
+    const updateData: Record<string, unknown> = {};
+    const {
+      fullName,
+      birthYear,
+      university,
+      major,
+      academicYear,
+      bio,
+      skills,
+      hardSkills,
+      softSkills,
+      achievements,
+    } = validated.data;
 
     if (fullName !== undefined) updateData.fullName = fullName.trim();
+    if (birthYear !== undefined) updateData.birthYear = birthYear;
     if (university !== undefined) updateData.university = university.trim();
     if (major !== undefined) updateData.major = major.trim();
     if (academicYear !== undefined) updateData.academicYear = academicYear.trim();
     if (bio !== undefined) updateData.bio = bio.trim();
-    if (skills !== undefined) updateData.skills = skills;
-    if (achievements !== undefined) updateData.achievements = achievements;
+
+    if (hardSkills !== undefined || softSkills !== undefined) {
+      const existing = await StudentProfile.findOne({ userId: authUser.id })
+        .select("hardSkills softSkills skills")
+        .lean();
+      const resolvedExisting = resolveCategorizedSkills(existing || undefined);
+
+      const nextHard =
+        hardSkills !== undefined
+          ? normalizeUniqueStrings(hardSkills)
+          : resolvedExisting.hardSkills;
+      const nextSoft =
+        softSkills !== undefined
+          ? normalizeUniqueStrings(softSkills)
+          : resolvedExisting.softSkills;
+
+      updateData.hardSkills = nextHard;
+      updateData.softSkills = nextSoft;
+      updateData.skills = normalizeUniqueStrings([...nextHard, ...nextSoft]);
+    } else if (skills !== undefined) {
+      const resolved = resolveCategorizedSkills({ skills });
+      updateData.hardSkills = resolved.hardSkills;
+      updateData.softSkills = resolved.softSkills;
+      updateData.skills = resolved.skills;
+    }
+
+    if (achievements !== undefined) {
+      updateData.achievements = normalizeUniqueStrings(achievements);
+    }
 
     const updatedProfile = await StudentProfile.findOneAndUpdate(
       { userId: authUser.id },
       { $set: updateData },
-      { new: true, upsert: true }
-    );
+      { returnDocument: "after", upsert: true }
+    ).lean();
 
-    // Đồng bộ tên sang User nếu họ tên thay đổi
-    if (fullName && fullName.trim() !== authUser.name) {
-      await User.findByIdAndUpdate(authUser.id, { $set: { name: fullName.trim() } });
+    let updatedUserDoc = null;
+    if (fullName !== undefined && fullName.trim() !== authUser.name) {
+      updatedUserDoc = await User.findByIdAndUpdate(
+        authUser.id,
+        { $set: { name: fullName.trim() } },
+        { returnDocument: "after" }
+      );
     }
 
-    return NextResponse.json({
+    const formatted = formatProfileResponse(updatedProfile);
+    const response = NextResponse.json({
       success: true,
       message: "Cập nhật hồ sơ sinh viên thành công!",
-      profile: updatedProfile,
+      profile: formatted,
     });
+
+    // Làm mới Access Token cookie nếu họ tên trên User vừa thay đổi
+    if (updatedUserDoc) {
+      const freshAccessToken = await signAccessTokenForUser(updatedUserDoc);
+      response.cookies.set(
+        AUTH_COOKIE_NAMES.ACCESS_TOKEN,
+        freshAccessToken,
+        getAuthCookieOptions(ACCESS_TOKEN_MAX_AGE_SECONDS)
+      );
+    }
+
+    return response;
   } catch (error) {
     return handleAuthError(error);
   }
 }
-

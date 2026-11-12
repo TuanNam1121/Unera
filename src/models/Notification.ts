@@ -1,14 +1,21 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import {
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_TYPES,
+  REMINDER_TYPES,
+} from "@/constants";
 import { INotification } from "@/types";
 
-export interface INotificationDocument extends Omit<INotification, "_id">, Document {}
+export interface INotificationDocument
+  extends Omit<INotification, "_id">,
+    Document {}
 
 const NotificationSchema = new Schema<INotificationDocument>(
   {
     recipientId: { type: String, required: true, index: true },
     type: {
       type: String,
-      enum: ["DEADLINE_REMINDER", "BOOKING_UPDATE", "ROADMAP_UPDATE", "SYSTEM_ANNOUNCEMENT"],
+      enum: Object.values(NOTIFICATION_TYPES),
       required: true,
       index: true,
     },
@@ -16,10 +23,11 @@ const NotificationSchema = new Schema<INotificationDocument>(
     message: { type: String, required: true, trim: true },
     link: { type: String, trim: true },
     isRead: { type: Boolean, default: false, index: true },
+    readAt: { type: Date, default: null },
     channel: {
       type: String,
-      enum: ["IN_APP", "EMAIL"],
-      default: "IN_APP",
+      enum: Object.values(NOTIFICATION_CHANNELS),
+      default: NOTIFICATION_CHANNELS.IN_APP,
       required: true,
     },
     emailDeliveryStatus: {
@@ -27,26 +35,29 @@ const NotificationSchema = new Schema<INotificationDocument>(
       enum: ["PENDING", "SENT", "FAILED"],
       default: "PENDING",
     },
-    opportunityId: { type: String },
+    activityId: { type: String },
+    reminderType: {
+      type: String,
+      enum: Object.values(REMINDER_TYPES),
+    },
     reminderOffsetDays: { type: Number },
+    idempotencyKey: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Ngăn chặn thông báo trùng lặp cho cùng một cơ hội và mốc ngày nhắc hẹn (FR-NOTI-06)
-NotificationSchema.index(
-  { recipientId: 1, opportunityId: 1, reminderOffsetDays: 1, channel: 1 },
-  {
-    unique: true,
-    sparse: true,
-  }
-);
+// Idempotency key duy nhất cho từng mốc nhắc của từng hoạt động & ngày mục tiêu
+NotificationSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
+NotificationSchema.index({ recipientId: 1, channel: 1, isRead: 1, createdAt: -1 });
+NotificationSchema.index({ recipientId: 1, type: 1, createdAt: -1 });
 
 export const Notification: Model<INotificationDocument> =
   mongoose.models.Notification ||
   mongoose.model<INotificationDocument>("Notification", NotificationSchema);
 
 export default Notification;
-

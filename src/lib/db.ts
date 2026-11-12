@@ -1,9 +1,16 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/unera";
+function resolveMongoUri(): string {
+  const uri = process.env.MONGODB_URI?.trim();
+  if (uri) return uri;
 
-if (!MONGODB_URI) {
-  throw new Error("Vui lòng định nghĩa biến môi trường MONGODB_URI trong file .env.local");
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Thiếu biến môi trường MONGODB_URI trong môi trường production."
+    );
+  }
+
+  return "mongodb://localhost:27017/unera";
 }
 
 interface MongooseCache {
@@ -36,9 +43,11 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
       maxPoolSize: 10,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
-      return mongooseInstance;
-    });
+    cached.promise = mongoose
+      .connect(resolveMongoUri(), opts)
+      .then((mongooseInstance) => {
+        return mongooseInstance;
+      });
   }
 
   try {

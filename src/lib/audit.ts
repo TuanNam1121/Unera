@@ -15,13 +15,14 @@ interface LogActionParams {
     | "STATUS_CHANGE"
     | "LOCK_ACCOUNT"
     | "UNLOCK_ACCOUNT"
+    | "ROLE_CHANGE"
     | "RESOLVE_CONFLICT";
   targetCollection: string;
   targetId: string | Types.ObjectId;
   targetTitle?: string;
   targetVersion?: number;
-  changesBefore?: Record<string, any>;
-  changesAfter?: Record<string, any>;
+  changesBefore?: Record<string, unknown>;
+  changesAfter?: Record<string, unknown>;
   reason?: string;
   req?: Request;
 }

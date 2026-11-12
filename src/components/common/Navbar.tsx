@@ -6,7 +6,8 @@ import {
   Compass,
   Map,
   Calendar,
-  Briefcase,
+  GraduationCap,
+  Newspaper,
   Users,
   Wrench,
   Menu,
@@ -19,10 +20,11 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "/explore", label: "Cơ hội", icon: Compass },
+    { href: "/explore", label: "Định hướng", icon: Compass },
+    { href: "/activities", label: "Hoạt động SV", icon: GraduationCap },
+    { href: "/news", label: "Tin tức", icon: Newspaper },
+    { href: "/activities?tab=followed", label: "Đã quan tâm", icon: Calendar },
     { href: "/roadmap", label: "Lộ trình", icon: Map },
-    { href: "/calendar", label: "Lịch hạn chót", icon: Calendar },
-    { href: "/applications", label: "Hồ sơ ứng tuyển", icon: Briefcase },
     { href: "/mentors", label: "Mentor", icon: Users },
     { href: "/tools", label: "Công cụ", icon: Wrench },
   ];

@@ -1,15 +1,8 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Bookmark,
-  CheckCircle2,
-  Circle,
-  Briefcase,
-  GraduationCap,
-  Code,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
+import HomeExploreArticles from "@/components/home/HomeExploreArticles";
 import HomeRoadmapCard from "@/components/home/HomeRoadmapCard";
+import HomeUpcomingDeadlines from "@/components/home/HomeUpcomingDeadlines";
 
 export default function HomePage() {
   return (
@@ -42,11 +35,11 @@ export default function HomePage() {
             </span>
 
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-[1.2]">
-              Tìm hướng đi. Mở cơ hội.
+              Tìm hướng đi. Vững bước tương lai.
             </h2>
 
             <p className="text-sm sm:text-base text-slate-600 max-w-xl leading-relaxed">
-              Khám phá thế mạnh, xây lộ trình và kết nối với những người giúp bạn tiến xa hơn trên hành trình sự nghiệp.
+              Khám phá thế mạnh, xây lộ trình đại học và cập nhật các hoạt động sinh viên phù hợp trên hành trình phát triển sự nghiệp.
             </p>
 
             <div className="pt-2 flex flex-wrap items-center gap-3">
@@ -59,12 +52,12 @@ export default function HomePage() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </Link>
-              <Link href="/explore">
+              <Link href="/activities">
                 <button
                   type="button"
                   className="flex items-center gap-2 rounded-xl border border-white/80 bg-white/80 px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 shadow-2xs hover:bg-white transition-all backdrop-blur-xs"
                 >
-                  <span>Khám phá 7 lĩnh vực</span>
+                  <span>Hoạt động sinh viên</span>
                   <ArrowRight className="h-4 w-4 text-slate-600" />
                 </button>
               </Link>
@@ -108,7 +101,7 @@ export default function HomePage() {
       {/* 3. TWO-COLUMN GRID: ROADMAP & UPCOMING DEADLINES */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2/3 width): Lộ trình của tôi */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="lg:col-span-2 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-slate-900">Lộ trình của tôi</h3>
             <Link
@@ -120,263 +113,17 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <HomeRoadmapCard />
+          <div className="flex-1">
+            <HomeRoadmapCard />
+          </div>
         </div>
 
         {/* Right Column (1/3 width): Hạn sắp tới */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-900">Hạn sắp tới</h3>
-            <Link
-              href="/calendar"
-              className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              Xem tất cả
-            </Link>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs divide-y divide-slate-100">
-            {/* Deadline Item 1 */}
-            <div className="flex items-center justify-between py-3 first:pt-1 last:pb-1">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 flex-col items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-center">
-                  <span className="text-sm font-bold text-blue-600 leading-none">12</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase mt-0.5">TH 11</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 line-clamp-1">
-                    Chương trình thực tập : SDSV Student
-                  </p>
-                  <p className="text-[11px] text-slate-400">Công việc thực tập</p>
-                </div>
-              </div>
-              <span className="shrink-0 rounded-md bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-500">
-                Còn 3 ngày
-              </span>
-            </div>
-
-            {/* Deadline Item 2 */}
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 flex-col items-center justify-center rounded-xl bg-purple-50 border border-purple-100 text-center">
-                  <span className="text-sm font-bold text-purple-600 leading-none">14</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase mt-0.5">TH 11</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 line-clamp-1">
-                    Workshop: Hiểu mình, chọn nghề
-                  </p>
-                  <p className="text-[11px] text-slate-400">Sự kiện trực tuyến</p>
-                </div>
-              </div>
-              <span className="shrink-0 rounded-md bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-500">
-                Còn 5 ngày
-              </span>
-            </div>
-
-            {/* Deadline Item 3 */}
-            <div className="flex items-center justify-between py-3 last:pb-1">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 flex-col items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-center">
-                  <span className="text-sm font-bold text-amber-600 leading-none">18</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase mt-0.5">TH 11</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 line-clamp-1">
-                    Chương trình thực tập mùa đông
-                  </p>
-                  <p className="text-[11px] text-slate-400">Cơ hội đã lưu</p>
-                </div>
-              </div>
-              <span className="shrink-0 rounded-md bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-500">
-                Còn 9 ngày
-              </span>
-            </div>
-          </div>
-        </div>
+        <HomeUpcomingDeadlines />
       </section>
 
-      {/* 4. FEATURED OPPORTUNITIES */}
-      <section className="space-y-4 pt-1">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Cơ hội nổi bật</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Được chọn cho bước tiến tiếp theo của bạn
-            </p>
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-            <button
-              type="button"
-              className="rounded-full bg-blue-50 border border-blue-200 px-3.5 py-1 text-xs font-semibold text-blue-700 shadow-2xs"
-            >
-              Dành cho bạn
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-white border border-slate-200 px-3.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Thực tập
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-white border border-slate-200 px-3.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Học bổng
-            </button>
-            <Link
-              href="/explore"
-              className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 ml-2 whitespace-nowrap"
-            >
-              <span>Xem tất cả</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </div>
-
-        {/* 3 Opportunity Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Opportunity Card 1 */}
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600">
-                    <Briefcase className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-blue-700 tracking-wider uppercase">
-                      THỰC TẬP
-                    </span>
-                    <p className="text-[11px] text-slate-400">Hà Nội · Hybrid</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-blue-600 p-1"
-                  title="Lưu cơ hội"
-                >
-                  <Bookmark className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600">
-                  UX/UI Design Intern
-                </h4>
-                <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                  Dành cho người yêu trải nghiệm số và muốn tạo ra sản phẩm có ý nghĩa.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                Phù hợp lộ trình
-              </span>
-              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
-                <span>Hạn nộp: 18/11</span>
-                <ArrowRight className="h-3 w-3 text-slate-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Opportunity Card 2 */}
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 border border-purple-100 text-purple-600">
-                    <GraduationCap className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-purple-700 tracking-wider uppercase">
-                      HỌC BỔNG
-                    </span>
-                    <p className="text-[11px] text-slate-400">Trực tuyến · 8 tuần</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-blue-600 p-1"
-                  title="Lưu cơ hội"
-                >
-                  <Bookmark className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">
-                  Digital Skills Scholarship
-                </h4>
-                <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                  Phát triển kỹ năng công nghệ với chương trình hỗ trợ học phí 100%.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700">
-                Đang mở đơn
-              </span>
-              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
-                <span>Hạn nộp: 25/11</span>
-                <ArrowRight className="h-3 w-3 text-slate-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Opportunity Card 3 */}
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 border border-teal-100 text-teal-600">
-                    <Code className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-teal-700 tracking-wider uppercase">
-                      CUỘC THI
-                    </span>
-                    <p className="text-[11px] text-slate-400">Toàn quốc · Đội 2-4 người</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-blue-600 p-1"
-                  title="Lưu cơ hội"
-                >
-                  <Bookmark className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">
-                  Build for Tomorrow 2026
-                </h4>
-                <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                  Cùng đồng đội giải bài toán thực tế và biến ý tưởng thành sản phẩm.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-medium text-teal-700">
-                Công nghệ
-              </span>
-              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
-                <span>Hạn đăng ký: 30/11</span>
-                <ArrowRight className="h-3 w-3 text-slate-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 4. ORIENTATION EXPLORE ARTICLES */}
+      <HomeExploreArticles />
     </div>
   );
 }

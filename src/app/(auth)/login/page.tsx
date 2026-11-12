@@ -3,8 +3,15 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { Eye, EyeOff, Loader2, AlertCircle, ArrowRight } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+} from "lucide-react";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,11 +23,33 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 
+const URL_ERROR_MESSAGES: Record<string, string> = {
+  AccountDisabled:
+    "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
+  GoogleOAuthNotConfigured:
+    "Đăng nhập Google chưa được cấu hình trên máy chủ.",
+  GoogleOAuthCancelled:
+    "Bạn đã hủy quá trình đăng nhập bằng Google.",
+  GoogleOAuthStateInvalid:
+    "Phiên xác thực Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.",
+  GoogleOAuthTokenFailed:
+    "Không thể xác thực mã ủy quyền với Google. Vui lòng thử lại.",
+  GoogleOAuthProfileFailed:
+    "Không thể lấy thông tin hồ sơ từ tài khoản Google.",
+  GoogleEmailNotVerified:
+    "Email Google của bạn chưa được xác minh.",
+  GoogleOAuthServerError:
+    "Có lỗi xảy ra khi đăng nhập bằng Google. Vui lòng thử lại sau.",
+};
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/explore";
+  const { setAuthUser, refreshUser } = useAuth();
+
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
   const urlError = searchParams.get("error");
+  const isResetSuccess = searchParams.get("reset") === "success";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,10 +58,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(
-    urlError === "OAuthAccountNotLinked"
-      ? "Email này đã được đăng ký bằng phương thức khác."
-      : urlError
-      ? "Đã xảy ra lỗi trong quá trình xác thực."
+    urlError
+      ? URL_ERROR_MESSAGES[urlError] || "Đã xảy ra lỗi trong quá trình xác thực."
       : ""
   );
 
@@ -42,33 +69,45 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await signIn("credentials", {
-        email: email.trim(),
-        password,
-        redirect: false,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          rememberMe,
+          callbackUrl,
+        }),
       });
 
-      if (res?.error) {
-        setErrorMessage(res.error || "Email hoặc mật khẩu không chính xác.");
-      } else {
-        router.push(callbackUrl);
-        router.refresh();
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMessage(data.error || "Email hoặc mật khẩu không chính xác.");
+        return;
       }
+
+      if (data.user) {
+        setAuthUser(data.user);
+      } else {
+        await refreshUser();
+      }
+
+      router.push(data.redirectTo || "/");
+      router.refresh();
     } catch {
-      setErrorMessage("Đã có lỗi xảy ra trong quá trình đăng nhập.");
+      setErrorMessage("Đã có lỗi xảy ra khi kết nối với máy chủ.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setGoogleLoading(true);
-      await signIn("google", { callbackUrl });
-    } catch {
-      setErrorMessage("Không thể kết nối với dịch vụ Google.");
-      setGoogleLoading(false);
-    }
+  const handleGoogleSignIn = () => {
+    setGoogleLoading(true);
+    const target = new URL("/api/auth/google", window.location.origin);
+    target.searchParams.set("callbackUrl", callbackUrl);
+    window.location.assign(target.toString());
   };
 
   return (
@@ -87,14 +126,23 @@ function LoginForm() {
         </CardHeader>
 
         <CardContent className="space-y-4 pt-2">
+          {isResetSuccess && !errorMessage && (
+            <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 p-3 text-xs sm:text-sm text-emerald-800 border border-emerald-200">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>
+                Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.
+              </span>
+            </div>
+          )}
+
           {errorMessage && (
-            <div className="flex items-center gap-2.5 rounded-xl bg-red-50 p-3 text-xs sm:text-sm text-red-700 border border-red-200 animate-in fade-in">
+            <div className="flex items-center gap-2.5 rounded-xl bg-red-50 p-3 text-xs sm:text-sm text-red-700 border border-red-200">
               <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
               <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Google OAuth Button (FR-AUTH-03) */}
+          {/* Google OAuth Button */}
           <button
             type="button"
             onClick={handleGoogleSignIn}
@@ -123,8 +171,12 @@ function LoginForm() {
                 />
               </svg>
             )}
-            <span>Tiếp tục với Google</span>
+            <span>Đăng nhập bằng Google</span>
           </button>
+
+          <p className="text-[11px] text-center text-slate-400">
+            Chưa có tài khoản Gmail trên Unera? Hệ thống sẽ tự động đăng ký cho bạn.
+          </p>
 
           <div className="relative flex items-center justify-center">
             <div className="w-full border-t border-slate-200" />
@@ -195,7 +247,7 @@ function LoginForm() {
                 className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
               />
               <label htmlFor="remember" className="text-xs text-slate-600 cursor-pointer">
-                Ghi nhớ đăng nhập trên thiết bị này
+                Ghi nhớ đăng nhập (30 ngày)
               </label>
             </div>
 
@@ -209,25 +261,6 @@ function LoginForm() {
               {!loading && <ArrowRight className="h-4 w-4" />}
             </Button>
           </form>
-
-          {/* Tài khoản thử nghiệm mặc định */}
-          <div className="rounded-xl bg-blue-50/70 p-3 text-xs text-blue-900 border border-blue-100/80">
-            <p className="font-semibold mb-1 text-blue-950">Tài khoản thử nghiệm có sẵn:</p>
-            <p className="leading-relaxed">
-              • Quản trị viên:{" "}
-              <code className="bg-white/80 px-1 py-0.2 rounded font-mono text-[11px] border border-blue-200/50">
-                admin@unera.edu.vn
-              </code>{" "}
-              / <code className="bg-white/80 px-1 py-0.2 rounded font-mono text-[11px] border border-blue-200/50">Admin@123456</code>
-            </p>
-            <p className="mt-1 leading-relaxed">
-              • Sinh viên:{" "}
-              <code className="bg-white/80 px-1 py-0.2 rounded font-mono text-[11px] border border-blue-200/50">
-                student@unera.edu.vn
-              </code>{" "}
-              / <code className="bg-white/80 px-1 py-0.2 rounded font-mono text-[11px] border border-blue-200/50">Student@123456</code>
-            </p>
-          </div>
         </CardContent>
 
         <CardFooter className="flex justify-center border-t border-slate-100 pt-4 text-xs text-slate-500">
