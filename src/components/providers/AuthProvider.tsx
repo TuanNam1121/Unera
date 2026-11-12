@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
 import { AccountStatus, OnboardingStep, UserRole } from "@/constants";
 
 export interface AuthUser {
@@ -52,7 +51,6 @@ async function fetchCurrentSessionUser(): Promise<AuthUser | null> {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const lastSyncRef = useRef<number>(0);
@@ -87,21 +85,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshUser]);
 
-  const logout = useCallback(
-    async (redirectTo = "/login") => {
-      try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          credentials: "include",
-        });
-      } finally {
-        setUser(null);
-        router.push(redirectTo);
-        router.refresh();
-      }
-    },
-    [router]
-  );
+  const logout = useCallback(async (redirectTo = "/login") => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      });
+    } finally {
+      setUser(null);
+      window.location.assign(redirectTo);
+    }
+  }, []);
 
   return (
     <AuthContext.Provider

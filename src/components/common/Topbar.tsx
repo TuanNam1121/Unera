@@ -186,7 +186,11 @@ export function Topbar() {
 
                 {/* Sign Out Button (FR-AUTH-04, FR-AUTH-10) */}
                 <button
-                  onClick={() => logout("/login")}
+                  type="button"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    void logout("/login");
+                  }}
                   className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
                 >
                   <LogOut className="h-3.5 w-3.5 text-red-500" />
@@ -200,6 +204,7 @@ export function Topbar() {
           <div className="flex items-center gap-2">
             <Link
               href="/login"
+              prefetch={false}
               className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 shadow-2xs transition-all"
             >
               <LogIn className="h-3.5 w-3.5 text-slate-500" />

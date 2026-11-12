@@ -177,6 +177,7 @@ export function NotificationBellDropdown({
     return (
       <Link
         href="/login?redirect=/notifications"
+        prefetch={false}
         className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 transition-colors"
         title="Đăng nhập để xem thông báo"
         aria-label="Đăng nhập để xem thông báo"

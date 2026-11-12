@@ -71,13 +71,18 @@ export async function proxy(req: NextRequest) {
     }
 
     // Đã hoàn thiện hồ sơ: không quay lại các trang login/register/complete-profile
-    if (AUTH_ENTRY_PATHS.has(pathname) || pathname === COMPLETE_PROFILE_PATH) {
+    if (
+      !isPrefetch &&
+      (AUTH_ENTRY_PATHS.has(pathname) || pathname === COMPLETE_PROFILE_PATH)
+    ) {
       const target = getPostAuthRedirectPath({
         isProfileCompleted: accessPayload.isProfileCompleted,
         onboardingStep: accessPayload.onboardingStep,
         role: accessPayload.role,
       });
-      return NextResponse.redirect(new URL(target, req.url));
+      const res = NextResponse.redirect(new URL(target, req.url));
+      res.headers.set("Cache-Control", "private, no-store");
+      return res;
     }
 
     // Bảo vệ khu vực Quản trị viên

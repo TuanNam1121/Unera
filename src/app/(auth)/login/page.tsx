@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -43,7 +43,6 @@ const URL_ERROR_MESSAGES: Record<string, string> = {
 };
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { setAuthUser, refreshUser } = useAuth();
 
@@ -94,8 +93,7 @@ function LoginForm() {
         await refreshUser();
       }
 
-      router.push(data.redirectTo || "/");
-      router.refresh();
+      window.location.assign(data.redirectTo || "/");
     } catch {
       setErrorMessage("Đã có lỗi xảy ra khi kết nối với máy chủ.");
     } finally {
