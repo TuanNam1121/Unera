@@ -91,8 +91,29 @@ const NewsArticleSchema = new Schema<INewsArticleDocument>(
 
 NewsArticleSchema.index({ tags: 1 });
 NewsArticleSchema.index({ status: 1, publishedAt: -1 });
+NewsArticleSchema.index({ status: 1, viewCount: -1, bookmarkCount: -1, shareCount: -1 });
 NewsArticleSchema.index({ status: 1, scheduledAt: 1 });
 NewsArticleSchema.index({ category: 1, status: 1, publishedAt: -1 });
+NewsArticleSchema.index(
+  {
+    title: "text",
+    tags: "text",
+    summary: "text",
+    authorName: "text",
+    contentText: "text",
+  },
+  {
+    weights: {
+      title: 10,
+      tags: 6,
+      summary: 4,
+      authorName: 3,
+      contentText: 1,
+    },
+    default_language: "none",
+    name: "news_article_text_search",
+  }
+);
 
 export const NewsArticle: Model<INewsArticleDocument> =
   mongoose.models.NewsArticle ||

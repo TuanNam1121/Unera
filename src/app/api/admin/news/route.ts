@@ -82,7 +82,6 @@ export async function GET(req: NextRequest) {
         { summary: regex },
         { authorName: regex },
         { tags: regex },
-        { contentText: regex },
       ];
     }
 

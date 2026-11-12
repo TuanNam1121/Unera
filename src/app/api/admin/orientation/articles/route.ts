@@ -72,8 +72,8 @@ export async function GET(req: Request) {
       const safeRegex = new RegExp(escapeRegexInput(q), "i");
       filter.$or = [
         { title: safeRegex },
+        { slug: safeRegex },
         { summary: safeRegex },
-        { contentText: safeRegex },
         { tags: safeRegex },
         { authorName: safeRegex },
       ];

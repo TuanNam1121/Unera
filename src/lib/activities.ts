@@ -187,15 +187,63 @@ export function serializeStudentActivity(
   };
 }
 
-export async function getActiveActivityCategories(): Promise<
-  IActivityCategoryDTO[]
-> {
+const ACTIVITY_TAXONOMY_CACHE_TTL_MS = 60_000;
+
+interface CachedActivityTaxonomy {
+  categories: IActivityCategoryDTO[];
+  byId: Map<string, IActivityCategoryDTO>;
+  bySlug: Map<string, IActivityCategoryDTO>;
+  expiresAt: number;
+}
+
+let cachedActivityTaxonomy: CachedActivityTaxonomy | null = null;
+let activityIndexesSyncStarted = false;
+
+export function invalidateActivityCategoryCache() {
+  cachedActivityTaxonomy = null;
+}
+
+export function ensureActivityIndexesInBackground() {
+  if (activityIndexesSyncStarted) return;
+  activityIndexesSyncStarted = true;
+  void StudentActivity.syncIndexes().catch(() => {
+    activityIndexesSyncStarted = false;
+  });
+}
+
+export async function getCachedActivityCategoryLookup(): Promise<CachedActivityTaxonomy> {
+  const now = Date.now();
+  if (cachedActivityTaxonomy && cachedActivityTaxonomy.expiresAt > now) {
+    return cachedActivityTaxonomy;
+  }
+
   await connectToDatabase();
-  const categories = await ActivityCategory.find({ isActive: true })
+  const docs = await ActivityCategory.find({ isActive: true })
     .sort({ order: 1, name: 1 })
     .lean();
 
-  return categories.map((cat) => serializeActivityCategory(cat));
+  const categories = docs.map((cat) => serializeActivityCategory(cat));
+  const byId = new Map<string, IActivityCategoryDTO>();
+  const bySlug = new Map<string, IActivityCategoryDTO>();
+  for (const cat of categories) {
+    byId.set(cat._id, cat);
+    bySlug.set(cat.slug.toLowerCase(), cat);
+  }
+
+  cachedActivityTaxonomy = {
+    categories,
+    byId,
+    bySlug,
+    expiresAt: now + ACTIVITY_TAXONOMY_CACHE_TTL_MS,
+  };
+  return cachedActivityTaxonomy;
+}
+
+export async function getActiveActivityCategories(): Promise<
+  IActivityCategoryDTO[]
+> {
+  const lookup = await getCachedActivityCategoryLookup();
+  return lookup.categories;
 }
 
 export async function ensureUniqueActivitySlug(
@@ -239,6 +287,7 @@ export async function ensureUniqueActivityCategorySlug(
 }
 
 export function revalidateActivityRoutes(slug?: string) {
+  invalidateActivityCategoryCache();
   revalidatePath("/activities");
   revalidatePath("/admin/activities");
   revalidatePath("/admin/activities/categories");

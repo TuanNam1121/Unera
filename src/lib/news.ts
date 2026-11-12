@@ -177,22 +177,79 @@ export function serializeNewsArticle(
   };
 }
 
-export async function getActiveNewsCategories(): Promise<INewsCategoryDTO[]> {
-  await connectToDatabase();
-  const categories = await NewsCategory.find({ isActive: true })
-    .sort({ order: 1, name: 1 })
-    .lean();
+const NEWS_TAXONOMY_CACHE_TTL_MS = 60_000;
+const SCHEDULED_PROMOTE_COOLDOWN_MS = 15_000;
 
-  return categories.map((cat) => serializeNewsCategory(cat));
+interface CachedNewsTaxonomy {
+  categories: INewsCategoryDTO[];
+  categoryById: Map<string, INewsCategoryDTO>;
+  categoryBySlug: Map<string, INewsCategoryDTO>;
+  tags: INewsTagDTO[];
+  tagBySlug: Map<string, INewsTagDTO>;
+  expiresAt: number;
+}
+
+let cachedNewsTaxonomy: CachedNewsTaxonomy | null = null;
+let newsIndexesSyncStarted = false;
+let lastScheduledPromoteAt = 0;
+
+export function invalidateNewsTaxonomyCache() {
+  cachedNewsTaxonomy = null;
+}
+
+export function ensureNewsIndexesInBackground() {
+  if (newsIndexesSyncStarted) return;
+  newsIndexesSyncStarted = true;
+  void NewsArticle.syncIndexes().catch(() => {
+    newsIndexesSyncStarted = false;
+  });
+}
+
+export async function getCachedNewsTaxonomyLookup(): Promise<CachedNewsTaxonomy> {
+  const now = Date.now();
+  if (cachedNewsTaxonomy && cachedNewsTaxonomy.expiresAt > now) {
+    return cachedNewsTaxonomy;
+  }
+
+  await connectToDatabase();
+  const [catDocs, tagDocs] = await Promise.all([
+    NewsCategory.find({ isActive: true }).sort({ order: 1, name: 1 }).lean(),
+    NewsTag.find({ isActive: true }).sort({ usageCount: -1, name: 1 }).lean(),
+  ]);
+
+  const categories = catDocs.map((cat) => serializeNewsCategory(cat));
+  const categoryById = new Map<string, INewsCategoryDTO>();
+  const categoryBySlug = new Map<string, INewsCategoryDTO>();
+  for (const cat of categories) {
+    categoryById.set(cat._id, cat);
+    categoryBySlug.set(cat.slug.toLowerCase(), cat);
+  }
+
+  const tags = tagDocs.map((t) => serializeNewsTag(t));
+  const tagBySlug = new Map<string, INewsTagDTO>();
+  for (const tag of tags) {
+    tagBySlug.set(tag.slug.toLowerCase(), tag);
+  }
+
+  cachedNewsTaxonomy = {
+    categories,
+    categoryById,
+    categoryBySlug,
+    tags,
+    tagBySlug,
+    expiresAt: now + NEWS_TAXONOMY_CACHE_TTL_MS,
+  };
+  return cachedNewsTaxonomy;
+}
+
+export async function getActiveNewsCategories(): Promise<INewsCategoryDTO[]> {
+  const lookup = await getCachedNewsTaxonomyLookup();
+  return lookup.categories;
 }
 
 export async function getActiveNewsTags(): Promise<INewsTagDTO[]> {
-  await connectToDatabase();
-  const tags = await NewsTag.find({ isActive: true })
-    .sort({ usageCount: -1, name: 1 })
-    .lean();
-
-  return tags.map((tag) => serializeNewsTag(tag));
+  const lookup = await getCachedNewsTaxonomyLookup();
+  return lookup.tags;
 }
 
 export async function ensureUniqueNewsCategorySlug(
@@ -256,6 +313,7 @@ export async function ensureUniqueNewsSlug(
 }
 
 export function revalidateNewsRoutes(slug?: string) {
+  invalidateNewsTaxonomyCache();
   try {
     revalidatePath("/");
     revalidatePath("/news");
@@ -274,6 +332,12 @@ export function revalidateNewsRoutes(slug?: string) {
  * Tự động chuyển trạng thái các bài viết SCHEDULED đã đến hoặc quá giờ hẹn (NEWS21).
  */
 export async function promoteDueScheduledNews(): Promise<number> {
+  const nowMs = Date.now();
+  if (nowMs - lastScheduledPromoteAt < SCHEDULED_PROMOTE_COOLDOWN_MS) {
+    return 0;
+  }
+  lastScheduledPromoteAt = nowMs;
+
   await connectToDatabase();
   const now = new Date();
   const dueArticles = await NewsArticle.find({

@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { ArticleCard } from "@/components/orientation/ArticleCard";
+import { Pagination } from "@/components/common/Pagination";
 import { fetchWithAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -513,38 +514,15 @@ function ExploreFeedContent() {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() =>
-                  updateUrlParams({ page: String(Math.max(1, page - 1)) }, false)
-                }
-              >
-                Trang trước
-              </Button>
-              <span className="px-3 text-sm text-slate-600">
-                Trang {page} / {totalPages}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() =>
-                  updateUrlParams(
-                    { page: String(Math.min(totalPages, page + 1)) },
-                    false
-                  )
-                }
-              >
-                Trang sau
-              </Button>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={total}
+            itemLabel="bài viết"
+            onPageChange={(nextPage) =>
+              updateUrlParams({ page: String(nextPage) }, false)
+            }
+          />
         </div>
       )}
     </div>

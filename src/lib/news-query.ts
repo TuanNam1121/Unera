@@ -1,25 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Types } from "mongoose";
+import { PipelineStage, Types } from "mongoose";
 import {
   NEWS_ARTICLE_STATUS,
   NEWS_DATE_RANGES,
   NEWS_SORT_OPTIONS,
 } from "@/constants";
 import { connectToDatabase } from "@/lib/db";
-import { getCurrentUser } from "@/lib/session";
-import { escapeRegexInput, slugifyVietnamese } from "@/lib/orientation-utils";
 import {
-  getActiveNewsCategories,
-  getActiveNewsTags,
+  ensureNewsIndexesInBackground,
+  getCachedNewsTaxonomyLookup,
   promoteDueScheduledNews,
   RawNewsArticleDoc,
   serializeNewsArticle,
 } from "@/lib/news";
-import { computeNewsPopularScore } from "@/lib/news-utils";
-import { NewsCategory } from "@/models/NewsCategory";
-import { NewsTag } from "@/models/NewsTag";
+import { escapeRegexInput, slugifyVietnamese } from "@/lib/orientation-utils";
+import { getOptionalUserIdFromRequest } from "@/lib/session";
 import { NewsArticle } from "@/models/NewsArticle";
 import { NewsBookmark } from "@/models/NewsBookmark";
+import type { INewsCategoryDTO } from "@/types";
 
 const CATEGORY_SLUG_ALIAS: Record<string, string> = {
   orientation: "orientation",
@@ -31,6 +29,35 @@ const CATEGORY_SLUG_ALIAS: Record<string, string> = {
   "skills-cv": "skills-cv",
   scholarships: "scholarships",
 };
+
+const NEWS_LIST_PROJECTION =
+  "_id title slug summary coverImage categoryId category tags authorName readTimeMinutes status scheduledAt publishedAt isFeatured isSponsored sponsorInfo sourceName sourceUrl viewCount bookmarkCount shareCount version createdAt";
+
+const NEWS_AGG_PROJECT = {
+  _id: 1,
+  title: 1,
+  slug: 1,
+  summary: 1,
+  coverImage: 1,
+  categoryId: 1,
+  category: 1,
+  tags: 1,
+  authorName: 1,
+  readTimeMinutes: 1,
+  status: 1,
+  scheduledAt: 1,
+  publishedAt: 1,
+  isFeatured: 1,
+  isSponsored: 1,
+  sponsorInfo: 1,
+  sourceName: 1,
+  sourceUrl: 1,
+  viewCount: 1,
+  bookmarkCount: 1,
+  shareCount: 1,
+  version: 1,
+  createdAt: 1,
+} as const;
 
 function getDateRangeStart(dateRange: string, now: Date): Date | null {
   switch (dateRange) {
@@ -50,12 +77,111 @@ function getDateRangeStart(dateRange: string, now: Date): Date | null {
   }
 }
 
+function hydrateNewsCategory(
+  docs: RawNewsArticleDoc[],
+  categoryById: Map<string, INewsCategoryDTO>
+): RawNewsArticleDoc[] {
+  return docs.map((doc) => {
+    const cat = doc.categoryId
+      ? categoryById.get(String(doc.categoryId)) || null
+      : null;
+    return {
+      ...doc,
+      categoryId: cat
+        ? {
+            _id: cat._id,
+            name: cat.name,
+            slug: cat.slug,
+            colorToken: cat.colorToken,
+          }
+        : null,
+    };
+  });
+}
+
+async function runNewsFilterQuery(params: {
+  matchFilter: Record<string, unknown>;
+  sort: string;
+  page: number;
+  limit: number;
+  useTextScore?: boolean;
+}): Promise<{ docs: RawNewsArticleDoc[]; total: number }> {
+  const { matchFilter, sort, page, limit, useTextScore } = params;
+  const skip = (page - 1) * limit;
+
+  if (sort === NEWS_SORT_OPTIONS.POPULAR) {
+    const pipeline: PipelineStage[] = [
+      { $match: matchFilter },
+      {
+        $addFields: {
+          _popularScore: {
+            $add: [
+              { $ifNull: ["$viewCount", 0] },
+              { $multiply: [{ $ifNull: ["$bookmarkCount", 0] }, 3] },
+              { $multiply: [{ $ifNull: ["$shareCount", 0] }, 2] },
+            ],
+          },
+        },
+      },
+      { $sort: { _popularScore: -1, viewCount: -1, publishedAt: -1, _id: -1 } },
+      {
+        $facet: {
+          items: [
+            { $skip: skip },
+            { $limit: limit },
+            { $project: NEWS_AGG_PROJECT },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ];
+
+    const aggRes = await NewsArticle.aggregate<{
+      items: RawNewsArticleDoc[];
+      totalCount: { count: number }[];
+    }>(pipeline);
+
+    const facet = aggRes[0];
+    return {
+      docs: facet?.items || [],
+      total: facet?.totalCount?.[0]?.count ?? 0,
+    };
+  }
+
+  const docs = (await NewsArticle.find(
+    matchFilter,
+    useTextScore ? { score: { $meta: "textScore" } } : undefined
+  )
+    .select(NEWS_LIST_PROJECTION)
+    .sort(
+      useTextScore
+        ? ({ score: { $meta: "textScore" }, publishedAt: -1, createdAt: -1 } as Record<
+            string,
+            1 | -1 | { $meta: "textScore" }
+          >)
+        : { publishedAt: -1, createdAt: -1, _id: -1 }
+    )
+    .skip(skip)
+    .limit(limit)
+    .lean()) as unknown as RawNewsArticleDoc[];
+
+  const total =
+    page === 1 && docs.length < limit
+      ? docs.length
+      : await NewsArticle.countDocuments(matchFilter);
+
+  return { docs, total };
+}
+
 export async function queryPublishedNews(req: NextRequest) {
   try {
-    await connectToDatabase();
-    await promoteDueScheduledNews();
+    const [, taxonomyLookup, userId] = await Promise.all([
+      connectToDatabase().then(() => promoteDueScheduledNews()),
+      getCachedNewsTaxonomyLookup(),
+      getOptionalUserIdFromRequest(req),
+    ]);
+    ensureNewsIndexesInBackground();
 
-    const currentUser = await getCurrentUser(req);
     const { searchParams } = new URL(req.url);
 
     const rawCategory = (searchParams.get("category") || "").trim();
@@ -76,37 +202,20 @@ export async function queryPublishedNews(req: NextRequest) {
       Math.max(1, parseInt(searchParams.get("limit") || "9", 10) || 9)
     );
 
-    const [categories, tags] = await Promise.all([
-      getActiveNewsCategories(),
-      getActiveNewsTags(),
-    ]);
+    const { categories, tags, categoryById, categoryBySlug, tagBySlug } =
+      taxonomyLookup;
 
-    let bookmarkedIds = new Set<string>();
-    if (currentUser && Types.ObjectId.isValid(currentUser.id)) {
-      const bookmarks = await NewsBookmark.find({
-        userId: new Types.ObjectId(currentUser.id),
-      })
-        .select("articleId")
-        .lean();
-      bookmarkedIds = new Set(bookmarks.map((b) => b.articleId.toString()));
-    }
-
-    const filter: Record<string, unknown> = {
+    const baseFilter: Record<string, unknown> = {
       status: NEWS_ARTICLE_STATUS.PUBLISHED,
     };
 
     if (rawCategory && rawCategory.toLowerCase() !== "all") {
       if (Types.ObjectId.isValid(rawCategory)) {
-        filter.categoryId = new Types.ObjectId(rawCategory);
+        baseFilter.categoryId = new Types.ObjectId(rawCategory);
       } else {
         const lowerCat = rawCategory.toLowerCase();
         const mappedSlug = CATEGORY_SLUG_ALIAS[lowerCat] || lowerCat;
-        const matchedCat = await NewsCategory.findOne({
-          slug: mappedSlug,
-          isActive: true,
-        })
-          .select("_id slug")
-          .lean();
+        const matchedCat = categoryBySlug.get(mappedSlug);
 
         if (!matchedCat) {
           return NextResponse.json({
@@ -121,21 +230,17 @@ export async function queryPublishedNews(req: NextRequest) {
             pagination: { page, limit, total: 0, totalPages: 0 },
           });
         }
-        filter.categoryId = matchedCat._id;
+        baseFilter.categoryId = new Types.ObjectId(matchedCat._id);
       }
     }
 
     if (rawTag && rawTag.toLowerCase() !== "all") {
-      const tagSlug = slugifyVietnamese(rawTag);
-      const matchedTag = await NewsTag.findOne({
-        $or: [
-          { slug: rawTag.toLowerCase() },
-          ...(tagSlug ? [{ slug: tagSlug }] : []),
-          { name: new RegExp(`^${escapeRegexInput(rawTag)}$`, "i") },
-        ],
-      })
-        .select("name slug")
-        .lean();
+      const rawTagLower = rawTag.toLowerCase();
+      const normalizedTagSlug = slugifyVietnamese(rawTag);
+      const matchedTag =
+        tagBySlug.get(rawTagLower) ||
+        (normalizedTagSlug ? tagBySlug.get(normalizedTagSlug) : undefined) ||
+        tags.find((t) => t.name.toLowerCase() === rawTagLower);
 
       const tagPatterns = Array.from(
         new Set(
@@ -145,70 +250,119 @@ export async function queryPublishedNews(req: NextRequest) {
         )
       ).map((v) => new RegExp(`^${escapeRegexInput(v)}$`, "i"));
 
-      filter.tags = { $in: tagPatterns };
+      baseFilter.tags = { $in: tagPatterns };
     }
 
     const now = new Date();
     const rangeStart = getDateRangeStart(dateRange, now);
     if (rangeStart) {
-      filter.publishedAt = { $gte: rangeStart };
+      baseFilter.publishedAt = { $gte: rangeStart };
     }
 
-    if (search) {
-      const regex = new RegExp(escapeRegexInput(search), "i");
-      filter.$or = [
-        { title: regex },
-        { summary: regex },
-        { tags: regex },
-        { authorName: regex },
-        { contentText: regex },
-      ];
-    }
+    const shouldLoadFeatured =
+      !rawCategory &&
+      !rawTag &&
+      !search &&
+      dateRange === "all" &&
+      page === 1;
 
-    const [rawDocs, rawFeaturedDocs] = await Promise.all([
-      NewsArticle.find(filter)
-        .select("-contentJson -contentText")
-        .populate("categoryId", "name slug colorToken")
-        .lean() as Promise<unknown[]>,
-      NewsArticle.find({
-        status: NEWS_ARTICLE_STATUS.PUBLISHED,
-        isFeatured: true,
-      })
-        .select("-contentJson -contentText")
-        .populate("categoryId", "name slug colorToken")
-        .sort({ publishedAt: -1, viewCount: -1 })
-        .limit(4)
-        .lean() as Promise<unknown[]>,
-    ]);
-
-    const items = (rawDocs as RawNewsArticleDoc[]).map((doc) =>
-      serializeNewsArticle(doc, { bookmarkedIds })
-    );
-
-    items.sort((a, b) => {
-      if (sort === NEWS_SORT_OPTIONS.POPULAR) {
-        const diff = computeNewsPopularScore(b) - computeNewsPopularScore(a);
-        if (diff !== 0) return diff;
-        return (b.viewCount || 0) - (a.viewCount || 0);
+    const queryNewsList = async (): Promise<{
+      docs: RawNewsArticleDoc[];
+      total: number;
+    }> => {
+      if (!search) {
+        return runNewsFilterQuery({
+          matchFilter: baseFilter,
+          sort,
+          page,
+          limit,
+        });
       }
 
-      const aTime = new Date(a.publishedAt || a.createdAt || 0).getTime();
-      const bTime = new Date(b.publishedAt || b.createdAt || 0).getTime();
-      return bTime - aTime;
-    });
+      if (search.length >= 2) {
+        try {
+          const textRes = await runNewsFilterQuery({
+            matchFilter: { ...baseFilter, $text: { $search: search } },
+            sort,
+            page,
+            limit,
+            useTextScore: sort !== NEWS_SORT_OPTIONS.POPULAR,
+          });
+          if (textRes.total > 0 || page > 1) {
+            return textRes;
+          }
+        } catch {
+          // Index may still be building on fresh deployments; fall back cleanly.
+        }
+      }
 
-    const total = items.length;
-    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-    const start = (page - 1) * limit;
+      const safeRegex = new RegExp(escapeRegexInput(search), "i");
+      return runNewsFilterQuery({
+        matchFilter: {
+          ...baseFilter,
+          $or: [
+            { title: safeRegex },
+            { summary: safeRegex },
+            { tags: safeRegex },
+            { authorName: safeRegex },
+          ],
+        },
+        sort,
+        page,
+        limit,
+      });
+    };
 
-    const featuredArticles = (rawFeaturedDocs as RawNewsArticleDoc[]).map(
-      (doc) => serializeNewsArticle(doc, { bookmarkedIds })
+    const [listResult, rawFeaturedDocs] = await Promise.all([
+      queryNewsList(),
+      shouldLoadFeatured
+        ? (NewsArticle.find({
+            status: NEWS_ARTICLE_STATUS.PUBLISHED,
+            isFeatured: true,
+          })
+            .select(NEWS_LIST_PROJECTION)
+            .sort({ publishedAt: -1, viewCount: -1 })
+            .limit(4)
+            .lean() as Promise<unknown[]>)
+        : Promise.resolve([]),
+    ]);
+
+    const rawDocs = hydrateNewsCategory(listResult.docs, categoryById);
+    const hydratedFeatured = hydrateNewsCategory(
+      rawFeaturedDocs as RawNewsArticleDoc[],
+      categoryById
     );
+
+    const bookmarkedIds = new Set<string>();
+    if (userId && Types.ObjectId.isValid(userId)) {
+      const checkIds = [
+        ...rawDocs.map((d) => d._id),
+        ...hydratedFeatured.map((d) => d._id),
+      ];
+      if (checkIds.length > 0) {
+        const bookmarks = await NewsBookmark.find({
+          userId: new Types.ObjectId(userId),
+          articleId: { $in: checkIds },
+        })
+          .select("articleId")
+          .lean();
+        for (const b of bookmarks) {
+          bookmarkedIds.add(b.articleId.toString());
+        }
+      }
+    }
+
+    const total = listResult.total;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,
-      articles: items.slice(start, start + limit),
-      featuredArticles,
+      articles: rawDocs.map((doc) =>
+        serializeNewsArticle(doc, { bookmarkedIds })
+      ),
+      featuredArticles: hydratedFeatured.map((doc) =>
+        serializeNewsArticle(doc, { bookmarkedIds })
+      ),
       categories,
       tags,
       total,
@@ -229,4 +383,3 @@ export async function queryPublishedNews(req: NextRequest) {
     );
   }
 }
-

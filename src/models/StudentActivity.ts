@@ -94,7 +94,30 @@ const StudentActivitySchema = new Schema<IStudentActivityDocument>(
 StudentActivitySchema.index({ publishStatus: 1, deadline: 1, eventDate: 1 });
 StudentActivitySchema.index({ categoryId: 1, publishStatus: 1 });
 StudentActivitySchema.index({ publishStatus: 1, followerCount: -1 });
+StudentActivitySchema.index({ publishStatus: 1, publishedAt: -1 });
 StudentActivitySchema.index({ createdAt: -1 });
+StudentActivitySchema.index(
+  {
+    title: "text",
+    tags: "text",
+    organizer: "text",
+    location: "text",
+    summary: "text",
+    contentText: "text",
+  },
+  {
+    weights: {
+      title: 10,
+      tags: 6,
+      organizer: 5,
+      location: 4,
+      summary: 4,
+      contentText: 1,
+    },
+    default_language: "none",
+    name: "student_activity_text_search",
+  }
+);
 
 export const StudentActivity: Model<IStudentActivityDocument> =
   mongoose.models.StudentActivity ||

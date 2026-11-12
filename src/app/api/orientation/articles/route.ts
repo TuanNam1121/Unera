@@ -1,40 +1,16 @@
-import { cookies } from "next/headers";
 import { NextResponse, connection } from "next/server";
 import { Types } from "mongoose";
-import { AUTH_COOKIE_NAMES, ORIENTATION_ARTICLE_STATUS } from "@/constants";
+import { ORIENTATION_ARTICLE_STATUS } from "@/constants";
 import { connectToDatabase } from "@/lib/db";
-import { verifyAccessToken } from "@/lib/jwt";
 import {
   ensureOrientationArticleIndexesInBackground,
   getCachedTaxonomyLookup,
   serializeOrientationArticle,
 } from "@/lib/orientation";
 import { escapeRegexInput } from "@/lib/orientation-utils";
+import { getOptionalUserIdFromRequest } from "@/lib/session";
 import { ArticleLike } from "@/models/ArticleLike";
 import { OrientationArticle } from "@/models/OrientationArticle";
-
-/**
- * Extracts user ID directly from the JWT without hitting the User collection.
- * Keeps public feed + search fast while still resolving liked state for logged-in users.
- */
-async function getOptionalUserIdFromRequest(req: Request): Promise<string | null> {
-  try {
-    let token: string | null = null;
-    const authHeader = req.headers.get("authorization");
-    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
-      token = authHeader.slice(7).trim() || null;
-    }
-    if (!token) {
-      const cookieStore = await cookies();
-      token = cookieStore.get(AUTH_COOKIE_NAMES.ACCESS_TOKEN)?.value || null;
-    }
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.sub ? String(payload.sub) : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * GET /api/orientation/articles

@@ -2,19 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import {
   ACTIVITY_PUBLISH_STATUS,
+  ActivityComputedStatus,
   CONTENT_TARGET_COLLECTIONS,
 } from "@/constants";
+import { queryPaginatedActivitiesFromDb } from "@/lib/activities-query";
 import { logAuditAction } from "@/lib/audit";
 import { syncContentMediaRefs } from "@/lib/content/media-sync";
 import { validateAndSanitizeTiptapDoc } from "@/lib/content/tiptap-schema";
 import { connectToDatabase } from "@/lib/db";
 import {
-  escapeRegexInput,
   isSafeMediaUrl,
   normalizeStringList,
 } from "@/lib/orientation-utils";
 import { handleAuthError, requireAdmin } from "@/lib/session";
 import {
+  ensureActivityIndexesInBackground,
   ensureUniqueActivitySlug,
   RawActivityDoc,
   revalidateActivityRoutes,
@@ -55,43 +57,54 @@ export async function GET(req: NextRequest) {
       filter.categoryId = new Types.ObjectId(categoryId);
     }
 
-    if (q) {
-      const regex = new RegExp(escapeRegexInput(q), "i");
-      filter.$or = [
-        { title: regex },
-        { slug: regex },
-        { summary: regex },
-        { organizer: regex },
-        { tags: regex },
-        { contentText: regex },
-      ];
-    }
+    ensureActivityIndexesInBackground();
+    const now = new Date();
+    const computedStatusFilter = computedStatus
+      ? [computedStatus as ActivityComputedStatus]
+      : undefined;
 
-    const [categories, rawActivities] = await Promise.all([
+    const [categories, paginated] = await Promise.all([
       ActivityCategory.find().sort({ order: 1, name: 1 }).lean(),
-      StudentActivity.find(filter)
-        .populate("categoryId", "name slug colorToken icon")
-        .sort({ updatedAt: -1, createdAt: -1 })
-        .lean(),
+      queryPaginatedActivitiesFromDb({
+        baseFilter: filter,
+        q,
+        computedStatusFilter,
+        sort: "updated_desc",
+        page,
+        limit,
+        now,
+      }),
     ]);
 
-    const now = new Date();
-    let items = (rawActivities as unknown as RawActivityDoc[]).map((doc) =>
-      serializeStudentActivity(doc, { now })
-    );
+    const serializedCategories = categories.map((c) => serializeActivityCategory(c));
+    const categoryById = new Map(serializedCategories.map((c) => [c._id, c]));
 
-    if (computedStatus) {
-      items = items.filter((item) => item.computedStatus === computedStatus);
-    }
+    const items = (paginated.docs as RawActivityDoc[]).map((doc) => {
+      const cat = doc.categoryId ? categoryById.get(String(doc.categoryId)) || null : null;
+      return serializeStudentActivity(
+        {
+          ...doc,
+          categoryId: cat
+            ? {
+                _id: cat._id,
+                name: cat.name,
+                slug: cat.slug,
+                colorToken: cat.colorToken,
+                icon: cat.icon,
+              }
+            : null,
+        },
+        { now }
+      );
+    });
 
-    const total = items.length;
+    const total = paginated.total;
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-    const start = (page - 1) * limit;
 
     return NextResponse.json({
       success: true,
-      items: items.slice(start, start + limit),
-      categories: categories.map((c) => serializeActivityCategory(c)),
+      items,
+      categories: serializedCategories,
       pagination: {
         page,
         limit,

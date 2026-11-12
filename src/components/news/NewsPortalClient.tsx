@@ -17,6 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { Pagination } from "@/components/common/Pagination";
 import { NewsCard } from "@/components/news/NewsCard";
 import { fetchWithAuth, useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ export function NewsPortalClient({
   // History data
   const [historyItems, setHistoryItems] = useState<INewsReadingHistoryItem[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyTotalPages, setHistoryTotalPages] = useState(0);
   const [loadedHistoryKey, setLoadedHistoryKey] = useState("");
 
   const currentFeedKey =
@@ -139,7 +141,7 @@ export function NewsPortalClient({
       }
       const qs = next.toString();
       const basePath = targetPath || pathname;
-      router.push(qs ? `${basePath}?${qs}` : basePath);
+      router.replace(qs ? `${basePath}?${qs}` : basePath, { scroll: false });
     },
     [pathname, router, searchParams]
   );
@@ -168,7 +170,7 @@ export function NewsPortalClient({
   // Fetch main feed
   useEffect(() => {
     if (activeTab !== "all") return;
-    let active = true;
+    const controller = new AbortController();
 
     const loadFeed = async () => {
       const params = new URLSearchParams();
@@ -185,9 +187,10 @@ export function NewsPortalClient({
       try {
         const res = await fetchWithAuth(`/api/news?${params.toString()}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
         const data = await res.json();
-        if (active && res.ok) {
+        if (!controller.signal.aborted && res.ok) {
           setArticles(data.articles || []);
           setFeaturedArticles(data.featuredArticles || []);
           setCategories(data.categories || []);
@@ -195,14 +198,18 @@ export function NewsPortalClient({
           setTotalCount(data.total || 0);
           setTotalPages(data.totalPages || 0);
         }
+      } catch (err) {
+        if ((err as { name?: string })?.name !== "AbortError") {
+          console.error("Load news feed error:", err);
+        }
       } finally {
-        if (active) setLoadedFeedKey(currentFeedKey);
+        if (!controller.signal.aborted) setLoadedFeedKey(currentFeedKey);
       }
     };
 
     void loadFeed();
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [
     activeTab,
@@ -218,55 +225,64 @@ export function NewsPortalClient({
   // Fetch saved bookmarks
   useEffect(() => {
     if (activeTab !== "saved" || !user) return;
-    let active = true;
+    const controller = new AbortController();
 
     const loadSaved = async () => {
       try {
         const res = await fetchWithAuth(
           `/api/news/saved?page=${queryPage}&limit=12`,
-          { cache: "no-store" }
+          { cache: "no-store", signal: controller.signal }
         );
         const data = await res.json();
-        if (active && res.ok) {
+        if (!controller.signal.aborted && res.ok) {
           setSavedItems(data.items || []);
           setSavedTotal(data.total || 0);
           setSavedTotalPages(data.totalPages || 0);
         }
+      } catch (err) {
+        if ((err as { name?: string })?.name !== "AbortError") {
+          console.error("Load saved news error:", err);
+        }
       } finally {
-        if (active) setLoadedSavedKey(currentSavedKey);
+        if (!controller.signal.aborted) setLoadedSavedKey(currentSavedKey);
       }
     };
 
     void loadSaved();
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [activeTab, currentSavedKey, queryPage, user]);
 
   // Fetch reading history
   useEffect(() => {
     if (activeTab !== "history" || !user) return;
-    let active = true;
+    const controller = new AbortController();
 
     const loadHistory = async () => {
       try {
         const res = await fetchWithAuth(
           `/api/news/history?page=${queryPage}&limit=12`,
-          { cache: "no-store" }
+          { cache: "no-store", signal: controller.signal }
         );
         const data = await res.json();
-        if (active && res.ok) {
+        if (!controller.signal.aborted && res.ok) {
           setHistoryItems(data.items || []);
           setHistoryTotal(data.total || 0);
+          setHistoryTotalPages(data.totalPages || 0);
+        }
+      } catch (err) {
+        if ((err as { name?: string })?.name !== "AbortError") {
+          console.error("Load news history error:", err);
         }
       } finally {
-        if (active) setLoadedHistoryKey(currentHistoryKey);
+        if (!controller.signal.aborted) setLoadedHistoryKey(currentHistoryKey);
       }
     };
 
     void loadHistory();
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [activeTab, currentHistoryKey, queryPage, user]);
 
@@ -672,35 +688,13 @@ export function NewsPortalClient({
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={queryPage <= 1}
-                onClick={() =>
-                  updateParams({ page: String(Math.max(1, queryPage - 1)) })
-                }
-              >
-                Trang trước
-              </Button>
-              <span className="text-xs font-semibold text-slate-600 px-2">
-                Trang {queryPage} / {totalPages}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={queryPage >= totalPages}
-                onClick={() =>
-                  updateParams({ page: String(Math.min(totalPages, queryPage + 1)) })
-                }
-              >
-                Trang sau
-              </Button>
-            </div>
-          )}
+          <Pagination
+            page={queryPage}
+            totalPages={totalPages}
+            totalItems={totalCount}
+            itemLabel="bài viết"
+            onPageChange={(nextPage) => updateParams({ page: String(nextPage) })}
+          />
         </div>
       )}
 
@@ -779,31 +773,13 @@ export function NewsPortalClient({
                   )
                 )}
               </div>
-              {savedTotalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={queryPage <= 1}
-                    onClick={() => updateParams({ page: String(queryPage - 1) })}
-                  >
-                    Trang trước
-                  </Button>
-                  <span className="text-xs font-semibold text-slate-600">
-                    Trang {queryPage} / {savedTotalPages}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={queryPage >= savedTotalPages}
-                    onClick={() => updateParams({ page: String(queryPage + 1) })}
-                  >
-                    Trang sau
-                  </Button>
-                </div>
-              )}
+              <Pagination
+                page={queryPage}
+                totalPages={savedTotalPages}
+                totalItems={savedTotal}
+                itemLabel="bài viết đã lưu"
+                onPageChange={(nextPage) => updateParams({ page: String(nextPage) })}
+              />
             </div>
           )}
         </div>
@@ -918,6 +894,14 @@ export function NewsPortalClient({
                   </div>
                 ))}
               </div>
+
+              <Pagination
+                page={queryPage}
+                totalPages={historyTotalPages}
+                totalItems={historyTotal}
+                itemLabel="bài viết"
+                onPageChange={(nextPage) => updateParams({ page: String(nextPage) })}
+              />
             </div>
           )}
         </div>

@@ -39,6 +39,23 @@ async function extractAccessToken(req?: Request): Promise<string | null> {
 }
 
 /**
+ * Lightweight user ID extraction from JWT without hitting the User collection.
+ * Suitable for public feeds that only check user likes/bookmarks/follows.
+ */
+export async function getOptionalUserIdFromRequest(
+  req?: Request
+): Promise<string | null> {
+  try {
+    const rawAccessToken = await extractAccessToken(req);
+    if (!rawAccessToken) return null;
+    const payload = await verifyAccessToken(rawAccessToken);
+    return payload?.sub ? String(payload.sub) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lấy thông tin người dùng hiện tại từ JWT Access Token (Cookie HttpOnly hoặc Bearer Header)
  * và đối chiếu trạng thái ACTIVE mới nhất từ MongoDB.
  */

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { ActivityCard } from "@/components/activities/ActivityCard";
+import { Pagination } from "@/components/common/Pagination";
 import { fetchWithAuth, useAuth } from "@/components/providers/AuthProvider";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,12 +57,11 @@ function StudentActivitiesFeedContent() {
     Number.parseInt(searchParams.get("page") || "1", 10) || 1
   );
 
+  const requestKey = `${tab}|${categoryParam}|${queryQ}|${statusParam}|${isDomesticParam}|${sortParam}|${page}`;
+
   const [searchInput, setSearchInput] = useState(queryQ);
   const [prevQueryQ, setPrevQueryQ] = useState(queryQ);
-  if (queryQ !== prevQueryQ) {
-    setPrevQueryQ(queryQ);
-    setSearchInput(queryQ);
-  }
+  const [prevRequestKey, setPrevRequestKey] = useState(requestKey);
   const [categories, setCategories] = useState<IActivityCategoryDTO[]>([]);
   const [items, setItems] = useState<IStudentActivitySummary[]>([]);
   const [followedCount, setFollowedCount] = useState(0);
@@ -72,17 +72,66 @@ function StudentActivitiesFeedContent() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState("");
   const [reloadTick, setReloadTick] = useState(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  if (queryQ !== prevQueryQ) {
+    setPrevQueryQ(queryQ);
+    setSearchInput(queryQ);
+  }
+
+  if (requestKey !== prevRequestKey) {
+    setPrevRequestKey(requestKey);
+    setLoading(true);
+  }
+
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const next = new URLSearchParams(searchParams.toString());
+      // Canonicalize legacy `type` alias into `category`
+      if ("category" in updates) {
+        next.delete("type");
+      }
+      for (const [key, value] of Object.entries(updates)) {
+        if (!value) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      }
+      if (!("page" in updates)) {
+        next.delete("page");
+      }
+      const qs = next.toString();
+      router.replace(qs ? `/activities?${qs}` : "/activities", { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  // Debounced live search 300ms
+  useEffect(() => {
+    const trimmed = searchInput.trim();
+    if (trimmed === queryQ) return;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      updateUrlParams({ q: trimmed || null });
+    }, 300);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchInput, queryQ, updateUrlParams]);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     async function loadActivities() {
       if (tab === "followed" && authLoading) return;
-
-      setLoading(true);
-      setRequiresLogin(false);
-      setFeedbackError("");
 
       try {
         const params = new URLSearchParams();
@@ -97,10 +146,11 @@ function StudentActivitiesFeedContent() {
 
         const res = await fetchWithAuth(`/api/activities?${params.toString()}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
 
         if (res.status === 401 && tab === "followed") {
-          if (!cancelled) {
+          if (!controller.signal.aborted) {
             setRequiresLogin(true);
             setItems([]);
             setTotal(0);
@@ -110,7 +160,9 @@ function StudentActivitiesFeedContent() {
         }
 
         const data = await res.json();
-        if (!cancelled && res.ok) {
+        if (!controller.signal.aborted && res.ok) {
+          setRequiresLogin(false);
+          setFeedbackError("");
           setItems(Array.isArray(data.items) ? data.items : []);
           if (Array.isArray(data.categories)) {
             setCategories(data.categories);
@@ -121,20 +173,23 @@ function StudentActivitiesFeedContent() {
           setTotal(data.pagination?.total || 0);
           setTotalPages(data.pagination?.totalPages || 0);
         }
-      } catch {
-        if (!cancelled) {
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+        if (!controller.signal.aborted) {
           setFeedbackError("Không thể tải danh sách hoạt động sinh viên.");
         }
       } finally {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
       }
     }
 
-    loadActivities();
+    void loadActivities();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [
     tab,
@@ -148,29 +203,16 @@ function StudentActivitiesFeedContent() {
     reloadTick,
   ]);
 
-  const updateUrlParams = (updates: Record<string, string | null>) => {
-    const next = new URLSearchParams(searchParams.toString());
-    // Canonicalize legacy `type` alias into `category`
-    if ("category" in updates) {
-      next.delete("type");
-    }
-    for (const [key, value] of Object.entries(updates)) {
-      if (!value) {
-        next.delete(key);
-      } else {
-        next.set(key, value);
-      }
-    }
-    if (!("page" in updates)) {
-      next.delete("page");
-    }
-    const qs = next.toString();
-    router.push(qs ? `/activities?${qs}` : "/activities");
-  };
-
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateUrlParams({ q: searchInput.trim() || null });
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    const trimmed = searchInput.trim() || null;
+    if ((trimmed || "") !== queryQ) {
+      setLoading(true);
+    }
+    updateUrlParams({ q: trimmed });
   };
 
   const handleToggleFollow = async (
@@ -260,8 +302,27 @@ function StudentActivitiesFeedContent() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm tên cuộc thi, học bổng, đơn vị..."
-                className="pl-9 bg-white rounded-xl border-slate-200 text-xs sm:text-sm"
+                className="pl-9 pr-8 bg-white rounded-xl border-slate-200 text-xs sm:text-sm"
               />
+              {searchInput && (
+                <button
+                  type="button"
+                  aria-label="Xóa từ khóa"
+                  onClick={() => {
+                    if (debounceTimerRef.current) {
+                      clearTimeout(debounceTimerRef.current);
+                    }
+                    setSearchInput("");
+                    if (queryQ) {
+                      setLoading(true);
+                      updateUrlParams({ q: null });
+                    }
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <Button type="submit" className="rounded-xl shrink-0">
               Tìm
@@ -506,33 +567,15 @@ function StudentActivitiesFeedContent() {
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => updateUrlParams({ page: String(page - 1) })}
-                className="rounded-xl"
-              >
-                Trang trước
-              </Button>
-              <span className="px-3 text-xs font-semibold text-slate-600">
-                Trang {page} / {totalPages}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => updateUrlParams({ page: String(page + 1) })}
-                className="rounded-xl"
-              >
-                Trang sau
-              </Button>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={total}
+            itemLabel="hoạt động"
+            onPageChange={(nextPage) =>
+              updateUrlParams({ page: String(nextPage) })
+            }
+          />
         </>
       )}
     </div>
